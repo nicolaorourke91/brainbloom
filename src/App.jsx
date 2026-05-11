@@ -1922,7 +1922,6 @@ export default function App(){
     );
   };
 
-  // ══ SETTINGS ══
   // ══ RENDER ══
   const TAB_LABELS={"🏠":"Home","📆":"Calendar","✅":"To-Do","⚙️":"Settings"};
 
@@ -1984,4 +1983,5 @@ export default function App(){
         <div className="tabs">
           {["🏠","📆","✅","⚙️"].map(tb=>(
             <button key={tb} className={"tab"+(tab===tb?" on":"")} onClick={()=>setTab(tb)}>
-              {tb}<div style={{fontSize:8,marginTop:1}}>{TAB_L
+              {tb}<div style={{fontSize:8,marginTop:1}}>{TAB_LABELS[tb]}</div>
+   
