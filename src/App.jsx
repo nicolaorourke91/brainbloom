@@ -957,6 +957,26 @@ function TourOverlay({onDone,onSkip,theme}){
 }
 
 
+function Sect({id,icon,title,children,openSects,setOpenSects,searchQ,accent}){
+  const SEARCH_IDX=SEARCH_INDEX;
+  const matches=()=>{
+    if(!searchQ)return true;
+    const entry=SEARCH_IDX.find(e=>e.section===id);
+    return entry&&entry.terms.some(term=>term.includes(searchQ)||searchQ.includes(term.substring(0,3)));
+  };
+  if(!matches())return null;
+  const isOpen=openSects[id];
+  return(
+    <div className="sect" style={searchQ&&matches()?{border:"2px solid "+accent+"44"}:{}}>
+      <div className="sect-hdr" onClick={()=>setOpenSects(p=>({...p,[id]:!p[id]}))}>
+        <div className="sect-title">{icon+" "+title}</div>
+        <span style={{fontSize:16,color:"#BBB",display:"inline-block",transition:"transform .2s",transform:isOpen?"rotate(180deg)":"none"}}>{"▾"}</span>
+      </div>
+      {isOpen&&<div className="sect-body">{children}</div>}
+    </div>
+  );
+}
+
 function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,setLocs,
   wantCycle,setWantCycle,wantSpend,setWantSpend,wantADHD,setWantADHD,
   morningList,setMorningList,eveningList,setEveningList,
@@ -986,24 +1006,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
   const available=Math.max(0,discretionary-monthSpent-upcomingComm);
 
   const searchQ=settingsSearch.toLowerCase().trim();
-  const matches=(section)=>{
-    if(!searchQ)return true;
-    const entry=SEARCH_INDEX.find(e=>e.section===section);
-    return entry&&entry.terms.some(term=>term.includes(searchQ)||searchQ.includes(term.substring(0,3)));
-  };
-  const Sect=({id,icon,title,children})=>{
-    if(!matches(id))return null;
-    const isOpen=openSects[id];
-    return(
-      <div className="sect" style={searchQ&&matches(id)?{border:"2px solid "+t.acc+"44"}:{}}>
-        <div className="sect-hdr" onClick={()=>setOpenSects(p=>({...p,[id]:!p[id]}))}>
-          <div className="sect-title">{icon+" "+title}</div>
-          <span style={{fontSize:16,color:"#BBB",display:"inline-block",transition:"transform .2s",transform:isOpen?"rotate(180deg)":"none"}}>▾</span>
-        </div>
-        {isOpen&&<div className="sect-body">{children}</div>}
-      </div>
-    );
-  };
+
 
   return(
     <>
@@ -1024,7 +1027,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Watch tour</button>
       </div>}
 
-      <Sect id="me" icon="👤" title="Me">
+      <Sect id="me" icon="👤" title="Me" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
         <div className="pf" style={{marginTop:4}}><label>Name</label><input className="pi" value={profName} onChange={e=>setProfName(e.target.value)}/></div>
         <div className="pf"><label>What you do</label><input className="pi" value={role} onChange={e=>setRole(e.target.value)}/></div>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"9px 0 5px"}}>Locations</div>
@@ -1043,7 +1046,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         </div>}
       </Sect>
 
-      <Sect id="finance" icon="💰" title="Finance">
+      <Sect id="finance" icon="💰" title="Finance" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
         <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable spending tracker</div></div><button className={"tog"+(wantSpend?" on":"")} onClick={()=>setWantSpend(s=>!s)}/></div>
         {wantSpend&&<>
           {finSetup&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:11,padding:12,marginTop:9,marginBottom:9,color:"white"}}>
@@ -1083,7 +1086,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         </>}
       </Sect>
 
-      <Sect id="cycle" icon="🌙" title="Cycle Tracking">
+      <Sect id="cycle" icon="🌙" title="Cycle Tracking" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
         <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable cycle tracking</div></div><button className={"tog"+(wantCycle?" on":"")} onClick={()=>setWantCycle(s=>!s)}/></div>
         {wantCycle&&<>
           <div className="pf" style={{marginTop:9}}><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
@@ -1095,7 +1098,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         </>}
       </Sect>
 
-      <Sect id="rewards" icon="🏆" title="Rewards">
+      <Sect id="rewards" icon="🏆" title="Rewards" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
         <div style={{display:"flex",gap:9,flexWrap:"wrap",marginBottom:9,marginTop:4}}>
           {[["☀️",mStreak,"Morning"],["🌙",eStreak,"Evening"],["✅",tasks.filter(t2=>t2.dn).length,"Tasks"],["😊",mdStreak,"Mood"]].map(([l,v,label])=>(
             <div key={l} style={{textAlign:"center"}}><div style={{fontFamily:"Fredoka One",fontSize:18,color:t.acc}}>{v}</div><div style={{fontSize:9,fontWeight:700,color:"#AAA"}}>{l+" "+label}</div></div>
@@ -1120,7 +1123,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         <button className="btn bp bsm" onClick={()=>{if(!nRew.trim()||!nRewT.trim())return;setRewards(r=>[...r,{id:"rc"+Date.now(),tr:nRewT,rw:nRew,ic:nRewI,sk:0,ty:"custom"}]);setNRew("");setNRewT("");setNRewI("🎁");}}>Add 🏆</button>
       </Sect>
 
-      <Sect id="app" icon="🎨" title="App Settings">
+      <Sect id="app" icon="🎨" title="App Settings" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"4px 0 6px"}}>Theme</div>
         <div className="th-grid">{Object.entries(THEMES).map(([key,th2])=><button key={key} className={"th-btn"+(theme===key?" on":"")} style={{background:"linear-gradient(135deg,"+th2.h1+","+th2.h2+")",color:"white"}} onClick={()=>setTheme(key)}>{th2.name}</button>)}</div>
         <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD features</div><div className="tog-sub">Aversion ratings, ADHD-specific tips, dreaded task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
@@ -1984,4 +1987,49 @@ export default function App(){
           {["🏠","📆","✅","⚙️"].map(tb=>(
             <button key={tb} className={"tab"+(tab===tb?" on":"")} onClick={()=>setTab(tb)}>
               {tb}<div style={{fontSize:8,marginTop:1}}>{TAB_LABELS[tb]}</div>
-   
+            </button>
+          ))}
+        </div>
+        <div className="pg">{renderTab()}</div>
+
+        {/* Draggable FAB */}
+        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x,zIndex:fabOpen?202:200}} onClick={()=>setFabOpen(o=>!o)}>
+          {fabOpen?"✕":"✦"}
+        </button>
+
+        {/* FAB menu */}
+        {fabOpen&&<div style={{position:"fixed",inset:0,zIndex:201,pointerEvents:"none"}}>
+          <div style={{position:"absolute",inset:0,pointerEvents:"all"}} onClick={()=>setFabOpen(false)}/>
+          <div className="fab-menu" style={{position:"absolute",top:Math.max(fabPos.y-130,10),left:Math.max(Math.min(fabPos.x-20,window.innerWidth-200),10),pointerEvents:"all",zIndex:202}}>
+            <button className="fab-opt" style={{background:"linear-gradient(135deg,#C77DFF,#7B2FBE)",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowVoice(true);}}>
+              🎙️ <span>Voice dump</span><span style={{fontSize:10,opacity:.8}}>Tell me anything</span>
+            </button>
+            <button className="fab-opt" style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowFocus(true);}}>
+              ⏱️ <span>Focus timer</span><span style={{fontSize:10,opacity:.8}}>Start a session</span>
+            </button>
+          </div>
+        </div>}
+
+        {/* Modals */}
+        {showVoice&&<VoiceSheet onClose={()=>setShowVoice(false)} onResult={handleVoiceResult} locs={locs} profName={profName} role={role} theme={theme}/>}
+        {showFocus&&<FocusSheet onClose={()=>setShowFocus(false)} energy={energy} tasks={tasks} spotifyUrl={spotifyUrl} theme={theme}/>}
+        {showAddEv&&tab==="🏠"&&<AddEventModal onClose={()=>setShowAddEv(false)} onSave={ev=>setCalEvents(p=>[...p,ev])} locs={locs} initialDate={selDay} lc={lc} le={le} theme={theme}/>}
+        {showTour&&<TourOverlay onDone={()=>{setShowTour(false);setTourDone(true);}} onSkip={()=>{setShowTour(false);setTourSkipped(true);}} theme={theme}/>}
+        {detailItem&&<DetailModal
+          item={detailItem.item}
+          type={detailItem.type}
+          onClose={()=>setDetailItem(null)}
+          onDelete={()=>{
+            if(detailItem.type==="task")setTasks(ts=>ts.filter(t2=>t2.id!==detailItem.item.id));
+            else handleDeleteEv(detailItem.item,detailItem.iso);
+          }}
+          onEdit={(updated)=>{
+            if(detailItem.type==="task")setTasks(ts=>ts.map(t2=>t2.id===updated.id?updated:t2));
+            else setCalEvents(evs=>evs.map(ev=>ev.id===updated.id?updated:ev));
+          }}
+          locs={locs} lc={lc} le={le} theme={theme}
+        />}
+      </div>
+    </>
+  );
+}
