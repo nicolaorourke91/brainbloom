@@ -238,7 +238,7 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .ck.on{background:#6BCB77;border-color:#6BCB77;}
 .av{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;}
 .avb{padding:2px 5px;border-radius:7px;border:1.5px solid #EEE;font-size:9px;font-weight:700;cursor:pointer;transition:all .15s;background:${t.card};display:flex;align-items:center;gap:2px;}
-.ai{flex:1;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:600;font-size:12px;outline:none;background:${t.card};color:${t.dark};}
+.ai{flex:1;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:600;font-size:16px;outline:none;background:${t.card};color:${t.dark};}
 .ai:focus{border-color:${t.acc};}
 .fr{display:flex;gap:3px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none;margin-bottom:5px;}
 .fr::-webkit-scrollbar{display:none;}
@@ -260,7 +260,7 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .tog.on{background:#6BCB77;}
 .tog::after{content:'';width:16px;height:16px;border-radius:50%;background:white;position:absolute;top:3px;left:3px;transition:left .3s;}
 .tog.on::after{left:21px;}
-.pi{width:100%;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:600;font-size:12px;outline:none;background:${t.card};color:${t.dark};}
+.pi{width:100%;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-weight:600;font-size:16px;outline:none;background:${t.card};color:${t.dark};}
 .pi:focus{border-color:${t.acc};}
 .pf{margin-bottom:7px;}
 .pf label{display:block;font-size:9px;font-weight:800;color:#BBB;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
@@ -329,7 +329,7 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .ob-prog{display:flex;gap:4px;margin-bottom:13px;}
 .ob-dot{flex:1;height:4px;border-radius:2px;background:#EEE;}
 .ob-dot.on{background:linear-gradient(90deg,${t.h1},${t.h2});}
-.ob-in{width:100%;padding:10px 12px;border:2px solid #EEE;border-radius:10px;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;outline:none;margin-bottom:8px;background:white;color:#2D2D2D;}
+.ob-in{width:100%;padding:10px 12px;border:2px solid #EEE;border-radius:10px;font-family:'Nunito',sans-serif;font-weight:700;font-size:16px;outline:none;margin-bottom:8px;background:white;color:#2D2D2D;}
 .ob-in:focus{border-color:${t.acc};}
 .ob-nx{width:100%;padding:12px;background:linear-gradient(135deg,${t.h1},${t.h2});color:white;border:none;border-radius:12px;font-family:'Fredoka One',cursive;font-size:15px;cursor:pointer;margin-top:8px;}
 .ob-nx:disabled{opacity:.4;cursor:not-allowed;}
@@ -343,9 +343,9 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .tour-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;}
 .tour-card{background:white;border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:430px;}
 .search-wrap{position:relative;margin-bottom:10px;}
-.search-in{width:100%;padding:9px 13px 9px 36px;border:2px solid #EEE;border-radius:22px;font-family:'Nunito',sans-serif;font-weight:600;font-size:13px;outline:none;background:${t.card};color:${t.dark};}
+.search-in{width:100%;padding:9px 13px 9px 36px;border:2px solid #EEE;border-radius:22px;font-family:'Nunito',sans-serif;font-weight:600;font-size:16px;outline:none;background:${t.card};color:${t.dark};}
 .search-in:focus{border-color:${t.acc};}
-.na{width:100%;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-size:11px;font-weight:600;resize:none;outline:none;min-height:55px;background:${t.card};color:${t.dark};}
+.na{width:100%;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;resize:none;outline:none;min-height:55px;background:${t.card};color:${t.dark};}
 .na:focus{border-color:#C77DFF;}
 .mbar{width:3px;border-radius:2px;background:white;animation:bbc .8s ease-in-out infinite;}
 .mbars{display:flex;gap:2px;align-items:flex-end;height:13px;}
@@ -494,7 +494,7 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
               <div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
               <div className="tog-row" style={{marginBottom:7}}><div><div className="tog-lbl">All day</div></div><button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/></div>
               {!allDay&&<div style={{display:"flex",gap:7,marginBottom:7}}>
-                <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}/></div>
+                <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>handleStartChange(e.target.value)}/></div>
                 <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
               </div>}
               <div className="tog-row" style={{marginBottom:hasCost?6:7}}><div><div className="tog-lbl">💰 Has a cost</div></div><button className={"tog"+(hasCost?" on":"")} onClick={()=>setHasCost(s=>!s)}/></div>
@@ -892,6 +892,12 @@ function AddEventModal({onClose,onSave,locs,initialDate,lc,le,theme}){
   const[allDay,setAllDay]=useState(false);
   const[startTime,setStartTime]=useState("09:00");
   const[endTime,setEndTime]=useState("10:00");
+  const handleStartChange=(val)=>{
+    setStartTime(val);
+    const[h,m]=val.split(":").map(Number);
+    const newH=(h+1)%24;
+    setEndTime(String(newH).padStart(2,"0")+":"+String(m).padStart(2,"0"));
+  };
   const[evLoc,setEvLoc]=useState(locs[0]||"Home");
   const[recur,setRecur]=useState("none");
   const[recurDays,setRecurDays]=useState([]);
@@ -1229,6 +1235,7 @@ export default function App(){
   // ── Session ──
   const[tab,setTab]=useState("🏠");
   const[csStep,setCsStep]=useState(0);
+  const[showCheckinEdit,setShowCheckinEdit]=useState(false);
   const[savedCheckin,setSavedCheckin]=useLS("bb_checkin_today",null);
   const csDone=savedCheckin&&savedCheckin.date===todayISO();
   const setCsDone=(v)=>{if(v)setSavedCheckin(p=>({...p,date:todayISO()}));};
@@ -2016,7 +2023,7 @@ export default function App(){
             <div className="dbg">{todayStr}</div>
           </div>
           {csDone&&mood&&<div className="pills">
-            <span className="pill">{mood.e+" "+mood.l}</span>
+            <span className="pill" style={{cursor:"pointer"}} onClick={()=>{setTab("🏠");setShowCheckinEdit(true);}}>{mood.e+" "+mood.l} ✏️</span>
             {energy&&<span className="pill">{energy.e+" "+energy.l}</span>}
             {wantCycle&&cPhase&&<span className="pill">{cPhase.e+" Day "+cDay}</span>}
           </div>}
@@ -2052,6 +2059,22 @@ export default function App(){
         {showVoice&&<VoiceSheet onClose={()=>setShowVoice(false)} onResult={handleVoiceResult} locs={locs} profName={profName} role={role} theme={theme}/>}
         {showFocus&&<FocusSheet onClose={()=>setShowFocus(false)} energy={energy} tasks={tasks} spotifyUrl={spotifyUrl} theme={theme}/>}
         {showAddEv&&tab==="🏠"&&<AddEventModal onClose={()=>setShowAddEv(false)} onSave={ev=>setCalEvents(p=>[...p,ev])} locs={locs} initialDate={selDay} lc={lc} le={le} theme={theme}/>}
+        {deleteModal&&tab==="🏠"&&<DeleteRecurModal ev={deleteModal.ev} date={deleteModal.date} onClose={()=>setDeleteModal(null)} onDelete={confirmDelete} theme={theme}/>}
+        {showCheckinEdit&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowCheckinEdit(false);}}>
+          <div className="modal" style={{padding:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>Edit today's check-in</div>
+              <button className="db" onClick={()=>setShowCheckinEdit(false)}>×</button>
+            </div>
+            <div className="sl">Mood</div>
+            <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(mood&&mood.e===m.e?" on":"")} onClick={()=>setMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
+            <div className="sl">Energy</div>
+            <div className="erow">{ENERGIES.map(e=><button key={e.e} className={"eb"+(energy&&energy.e===e.e?" on":"")} onClick={()=>setEnergy(e)}>{e.e}<span>{e.l}</span></button>)}</div>
+            <div className="sl">Symptoms</div>
+            <div className="sg" style={{marginBottom:11}}>{SYMPTOMS.map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
+            <button className="nb" style={{marginTop:0}} onClick={()=>setShowCheckinEdit(false)}>Save ✓</button>
+          </div>
+        </div>}
         {showTour&&<TourOverlay onDone={()=>{setShowTour(false);setTourDone(true);}} onSkip={()=>{setShowTour(false);setTourSkipped(true);}} theme={theme}/>}
         {detailItem&&<DetailModal
           item={detailItem.item}
