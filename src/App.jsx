@@ -491,6 +491,101 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
   );
 }
 
+function IncomeForm({onAdd,theme}){
+  const t=THEMES[theme]||THEMES.bloom;
+  const[label,setLabel]=useState("");
+  const[amount,setAmount]=useState("");
+  const[freq,setFreq]=useState("monthly");
+  const[dayOfMonth,setDayOfMonth]=useState("");
+  const[dayOfWeek,setDayOfWeek]=useState("Monday");
+  const add=()=>{
+    if(!label.trim()||!amount)return;
+    onAdd({id:"i"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:""});
+    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");
+  };
+  return(
+    <div style={{marginBottom:4}}>
+      <div style={{display:"flex",gap:3,marginBottom:3,flexWrap:"wrap"}}>
+        <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Salary)" value={label} onChange={e=>setLabel(e.target.value)}/>
+        <input className="pi" style={{width:60,fontSize:11}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
+        <select className="pi" style={{width:105,fontSize:11}} value={freq} onChange={e=>setFreq(e.target.value)}>
+          {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
+        </select>
+      </div>
+      {["monthly","annually"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day of month:</span>
+        <input className="pi" style={{width:55,fontSize:11}} type="number" min="1" max="31" placeholder="e.g. 25" value={dayOfMonth} onChange={e=>setDayOfMonth(e.target.value)}/>
+        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
+      </div>}
+      {["weekly","fortnightly"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day:</span>
+        <select className="pi" style={{flex:1,fontSize:11}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
+          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
+        </select>
+        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
+      </div>}
+      <button className="btn bp bsm" onClick={add}>+ Add</button>
+    </div>
+  );
+}
+
+function CostForm({onAdd,theme}){
+  const t=THEMES[theme]||THEMES.bloom;
+  const[label,setLabel]=useState("");
+  const[amount,setAmount]=useState("");
+  const[freq,setFreq]=useState("monthly");
+  const[dayOfMonth,setDayOfMonth]=useState("");
+  const[dayOfWeek,setDayOfWeek]=useState("Monday");
+  const add=()=>{
+    if(!label.trim()||!amount)return;
+    onAdd({id:"c"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:""});
+    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");
+  };
+  return(
+    <div style={{marginBottom:4}}>
+      <div style={{display:"flex",gap:3,marginBottom:3,flexWrap:"wrap"}}>
+        <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Mortgage)" value={label} onChange={e=>setLabel(e.target.value)}/>
+        <input className="pi" style={{width:60,fontSize:11}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
+        <select className="pi" style={{width:105,fontSize:11}} value={freq} onChange={e=>setFreq(e.target.value)}>
+          {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
+        </select>
+      </div>
+      {["monthly","annually"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Due day:</span>
+        <input className="pi" style={{width:55,fontSize:11}} type="number" min="1" max="31" placeholder="e.g. 1" value={dayOfMonth} onChange={e=>setDayOfMonth(e.target.value)}/>
+        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
+      </div>}
+      {["weekly","fortnightly"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day:</span>
+        <select className="pi" style={{flex:1,fontSize:11}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
+          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
+        </select>
+        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
+      </div>}
+      <button className="btn bp bsm" onClick={add}>+ Add</button>
+    </div>
+  );
+}
+
+function OOIForm({onAdd}){
+  const[label,setLabel]=useState("");
+  const[amount,setAmount]=useState("");
+  const[date,setDate]=useState("");
+  const add=()=>{
+    if(!label.trim()||!amount)return;
+    onAdd({id:"oo"+Date.now(),label,amount:+amount,date});
+    setLabel("");setAmount("");setDate("");
+  };
+  return(
+    <div style={{display:"flex",gap:3,marginBottom:4,flexWrap:"wrap"}}>
+      <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Tax refund)" value={label} onChange={e=>setLabel(e.target.value)}/>
+      <input className="pi" style={{width:60,fontSize:11}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
+      <input className="pi" style={{width:115,fontSize:11}} type="date" value={date} onChange={e=>setDate(e.target.value)}/>
+      <button className="btn bp bsm" onClick={add}>+ Add</button>
+    </div>
+  );
+}
+
 function Onboarding({onComplete,theme}){
   const[step,setStep]=useState(0);
   const[name,setName]=useState("");
@@ -908,11 +1003,17 @@ export default function App(){
   // ── Session ──
   const[tab,setTab]=useState("🏠");
   const[csStep,setCsStep]=useState(0);
-  const[csDone,setCsDone]=useState(false);
-  const[mood,setMood]=useState(null);
-  const[energy,setEnergy]=useState(null);
-  const[syms,setSyms]=useState([]);
-  const[evDone,setEvDone]=useState(false);
+  const[savedCheckin,setSavedCheckin]=useLS("bb_checkin_today",null);
+  const csDone=savedCheckin&&savedCheckin.date===todayISO();
+  const setCsDone=(v)=>{if(v)setSavedCheckin(p=>({...p,date:todayISO()}));};
+  const mood=savedCheckin&&savedCheckin.date===todayISO()?savedCheckin.mood:null;
+  const setMood=(m)=>setSavedCheckin(p=>({...(p||{}),date:todayISO(),mood:m}));
+  const energy=savedCheckin&&savedCheckin.date===todayISO()?savedCheckin.energy:null;
+  const setEnergy=(e)=>setSavedCheckin(p=>({...(p||{}),date:todayISO(),energy:e}));
+  const syms=savedCheckin&&savedCheckin.date===todayISO()?(savedCheckin.syms||[]):[];
+  const setSyms=(fn)=>setSavedCheckin(p=>{const prev=(p&&p.date===todayISO()?p:{date:todayISO()});const cur=prev.syms||[];const next=typeof fn==="function"?fn(cur):fn;return{...prev,syms:next};});
+  const[evDone,setEvDone]=useLS("bb_evdone_today",{date:"",done:false});
+  const isEvDone=evDone.date===todayISO()&&evDone.done;
   const[evMood,setEvMood]=useState(null);
   const[notes,setNotes]=useState("");
   const[selDay,setSelDay]=useState(todayISO());
@@ -1002,8 +1103,29 @@ export default function App(){
   const getEventsForDay=(iso)=>calEvents.filter(ev=>eventOccursOn(ev,iso));
   const getFinEventsForDay=(iso)=>{
     const evs=[];
-    incomes.forEach(i=>{if(i.dayOfMonth){const d=new Date(iso+"T12:00:00");if(d.getDate()===+i.dayOfMonth)evs.push({id:"inc_"+i.id,title:"💵 "+i.label+" income",date:iso,allDay:true,loc:locs[0]||"Home",recur:"monthly",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount,freq:i.freq});}});
-    fixedCosts.forEach(c=>{if(c.dayOfMonth){const d=new Date(iso+"T12:00:00");if(d.getDate()===+c.dayOfMonth)evs.push({id:"cost_"+c.id,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"monthly",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount,freq:c.freq});}});
+    const d=new Date(iso+"T12:00:00");
+    const dayNum=d.getDate();
+    const dayName=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][d.getDay()];
+    incomes.forEach(i=>{
+      if(i.dayOfMonth&&["monthly","annually"].includes(i.freq)&&dayNum===+i.dayOfMonth)
+        evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+      if(i.dayOfWeek&&i.freq==="weekly"&&dayName===i.dayOfWeek)
+        evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+      if(i.dayOfWeek&&i.freq==="fortnightly"&&dayName===i.dayOfWeek){
+        const weeksSinceEpoch=Math.floor(d.getTime()/(7*86400000));
+        if(weeksSinceEpoch%2===0)evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label+" (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+      }
+    });
+    fixedCosts.forEach(c=>{
+      if(c.dayOfMonth&&["monthly","annually"].includes(c.freq)&&dayNum===+c.dayOfMonth)
+        evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+      if(c.dayOfWeek&&c.freq==="weekly"&&dayName===c.dayOfWeek)
+        evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+      if(c.dayOfWeek&&c.freq==="fortnightly"&&dayName===c.dayOfWeek){
+        const weeksSinceEpoch=Math.floor(d.getTime()/(7*86400000));
+        if(weeksSinceEpoch%2===0)evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+      }
+    });
     oneOffIncome.forEach(o=>{if(o.date===iso)evs.push({id:"ooi_"+o.id,title:"💵 "+o.label+" (one-off)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income_once",amount:+o.amount});});
     return evs;
   };
@@ -1077,37 +1199,31 @@ export default function App(){
   useEffect(()=>{fabPosRef.current=fabPos;},[fabPos]);
   useEffect(()=>{
     const fab=fabRef.current;if(!fab)return;
-    let moved=false;
-    const onStart=(e)=>{
-      const p=e.touches?e.touches[0]:e;
-      dragRef.current={active:true,sx:p.clientX,sy:p.clientY,px:fabPosRef.current.x,py:fabPosRef.current.y};
-      moved=false;
-      e.stopPropagation();
+    let startX=0,startY=0,startPX=0,startPY=0,dragging=false,moved=false;
+    const onTouchStart=(e)=>{
+      const p=e.touches[0];
+      startX=p.clientX;startY=p.clientY;
+      startPX=fabPosRef.current.x;startPY=fabPosRef.current.y;
+      dragging=true;moved=false;
     };
-    const onMove=(e)=>{
-      if(!dragRef.current.active)return;
-      const p=e.touches?e.touches[0]:e;
-      const dx=p.clientX-dragRef.current.sx,dy=p.clientY-dragRef.current.sy;
-      if(Math.abs(dx)>6||Math.abs(dy)>6){
+    const onTouchMove=(e)=>{
+      if(!dragging)return;
+      const p=e.touches[0];
+      const dx=p.clientX-startX,dy=p.clientY-startY;
+      if(Math.abs(dx)>8||Math.abs(dy)>8){
         moved=true;
-        setFabPos({x:Math.max(10,Math.min(window.innerWidth-62,dragRef.current.px+dx)),y:Math.max(10,Math.min(window.innerHeight-62,dragRef.current.py+dy))});
+        setFabPos({x:Math.max(10,Math.min(window.innerWidth-62,startPX+dx)),y:Math.max(10,Math.min(window.innerHeight-62,startPY+dy))});
         e.preventDefault();
       }
     };
-    const onEnd=()=>{dragRef.current.active=false;};
-    fab.addEventListener("touchstart",onStart,{passive:true});
-    fab.addEventListener("mousedown",onStart);
-    window.addEventListener("touchmove",onMove,{passive:false});
-    window.addEventListener("mousemove",onMove);
-    window.addEventListener("touchend",onEnd);
-    window.addEventListener("mouseup",onEnd);
+    const onTouchEnd=()=>{dragging=false;};
+    fab.addEventListener("touchstart",onTouchStart,{passive:true});
+    window.addEventListener("touchmove",onTouchMove,{passive:false});
+    window.addEventListener("touchend",onTouchEnd);
     return()=>{
-      fab.removeEventListener("touchstart",onStart);
-      fab.removeEventListener("mousedown",onStart);
-      window.removeEventListener("touchmove",onMove);
-      window.removeEventListener("mousemove",onMove);
-      window.removeEventListener("touchend",onEnd);
-      window.removeEventListener("mouseup",onEnd);
+      fab.removeEventListener("touchstart",onTouchStart);
+      window.removeEventListener("touchmove",onTouchMove);
+      window.removeEventListener("touchend",onTouchEnd);
     };
   },[]);
 
@@ -1156,7 +1272,7 @@ export default function App(){
       const found=kw.filter(k=>notes.toLowerCase().includes(k));
       if(found.length>0)setHabitLog(prev=>[{dt:iso,habits:found,mood:evMood?evMood.e:null,energy:energy?energy.e:null},...prev.filter(h=>h.dt!==iso)]);
     }
-    setEvDone(true);setMStreak(s=>s<14?s+1:s);setEStreak(s=>s<14?s+1:s);setMdStreak(s=>s<7?s+1:s);
+    setEvDone({date:todayISO(),done:true});setMStreak(s=>s<14?s+1:s);setEStreak(s=>s<14?s+1:s);setMdStreak(s=>s<7?s+1:s);
     setCheckinDays(d=>d+1);
   };
 
@@ -1445,7 +1561,7 @@ export default function App(){
         </div>}
 
         {/* Evening check-in */}
-        {greeting.isEve&&!evDone&&<div className="card" style={{border:"2px solid #9B5DE5"}}>
+        {greeting.isEve&&!isEvDone&&<div className="card" style={{border:"2px solid #9B5DE5"}}>
           <div className="ct">🌙 Evening Check-in</div>
           <div className="sl">How are you feeling?</div>
           <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(evMood&&evMood.e===m.e?" on":"")} onClick={()=>setEvMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
@@ -1461,7 +1577,7 @@ export default function App(){
           <textarea className="na" placeholder="e.g. Went to the gym, had lunch, feeling tired..." value={notes} onChange={e=>setNotes(e.target.value)}/>
           <button className="nb" style={{marginTop:7,background:"linear-gradient(135deg,#9B5DE5,#4361EE)"}} onClick={saveEvLog}>Save and wind down 🌙</button>
         </div>}
-        {evDone&&<div className="card" style={{textAlign:"center",background:"linear-gradient(135deg,#F9F5FF,#FFF0F0)"}}><div style={{fontSize:34}}>🌙</div><div style={{fontFamily:"Fredoka One",fontSize:15,marginTop:4}}>Evening done!</div><p style={{fontSize:10,color:"#AAA",marginTop:1}}>Rest well 💙</p></div>}
+        {isEvDone&&<div className="card" style={{textAlign:"center",background:"linear-gradient(135deg,#F9F5FF,#FFF0F0)"}}><div style={{fontSize:34}}>🌙</div><div style={{fontFamily:"Fredoka One",fontSize:15,marginTop:4}}>Evening done!</div><p style={{fontSize:10,color:"#AAA",marginTop:1}}>Rest well 💙</p></div>}
 
         {/* Evening routine always shown */}
         <div className="card">
@@ -1707,34 +1823,13 @@ export default function App(){
             {finSetup&&<>
               <div className="sl">Regular income</div>
               {incomes.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+" · "+i.freq+(i.dayOfMonth?" · paid day "+i.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setIncomes(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
-              <div style={{display:"flex",gap:3,marginBottom:4,flexWrap:"wrap"}}>
-                <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Salary)" value={newInc.label} onChange={e=>setNewInc(p=>({...p,label:e.target.value}))}/>
-                <input className="pi" style={{width:55,fontSize:11}} type="number" placeholder="€" value={newInc.amount} onChange={e=>setNewInc(p=>({...p,amount:e.target.value}))}/>
-                <select className="pi" style={{width:100,fontSize:11}} value={newInc.freq} onChange={e=>setNewInc(p=>({...p,freq:e.target.value}))}>
-                  {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
-                </select>
-                <input className="pi" style={{width:48,fontSize:11}} type="number" min="1" max="31" placeholder="Day" title="Day of month payment arrives" value={newInc.dayOfMonth} onChange={e=>setNewInc(p=>({...p,dayOfMonth:e.target.value}))}/>
-                <button className="btn bp bsm" onClick={()=>{if(!newInc.label.trim()||!newInc.amount)return;setIncomes(p=>[...p,{id:"i"+Date.now(),label:newInc.label,amount:+newInc.amount,freq:newInc.freq,dayOfMonth:newInc.dayOfMonth}]);setNewInc({label:"",amount:"",freq:"monthly",dayOfMonth:""});}}>+</button>
-              </div>
+              <IncomeForm onAdd={i=>setIncomes(p=>[...p,i])} theme={theme}/>
               <div className="sl">One-off income <span style={{fontSize:9,color:"#AAA"}}>(tax refund, bonus, etc)</span></div>
               {oneOffIncome.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+(i.date?" · "+i.date:"")}</div></div><button className="db" onClick={()=>setOneOffIncome(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
-              <div style={{display:"flex",gap:3,marginBottom:4,flexWrap:"wrap"}}>
-                <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Tax refund)" value={newOOI.label} onChange={e=>setNewOOI(p=>({...p,label:e.target.value}))}/>
-                <input className="pi" style={{width:55,fontSize:11}} type="number" placeholder="€" value={newOOI.amount} onChange={e=>setNewOOI(p=>({...p,amount:e.target.value}))}/>
-                <input className="pi" style={{width:110,fontSize:11}} type="date" value={newOOI.date} onChange={e=>setNewOOI(p=>({...p,date:e.target.value}))}/>
-                <button className="btn bp bsm" onClick={()=>{if(!newOOI.label.trim()||!newOOI.amount)return;setOneOffIncome(p=>[...p,{id:"oo"+Date.now(),label:newOOI.label,amount:+newOOI.amount,date:newOOI.date}]);setNewOOI({label:"",amount:"",date:""});}}>+</button>
-              </div>
+              <OOIForm onAdd={i=>setOneOffIncome(p=>[...p,i])}/>
               <div className="sl">Fixed costs</div>
               {fixedCosts.map(c=><div key={c.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{c.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+c.amount+" · "+c.freq+(c.dayOfMonth?" · due day "+c.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setFixedCosts(p=>p.filter(x=>x.id!==c.id))}>×</button></div>)}
-              <div style={{display:"flex",gap:3,marginBottom:4,flexWrap:"wrap"}}>
-                <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Mortgage)" value={newCost.label} onChange={e=>setNewCost(p=>({...p,label:e.target.value}))}/>
-                <input className="pi" style={{width:55,fontSize:11}} type="number" placeholder="€" value={newCost.amount} onChange={e=>setNewCost(p=>({...p,amount:e.target.value}))}/>
-                <select className="pi" style={{width:100,fontSize:11}} value={newCost.freq} onChange={e=>setNewCost(p=>({...p,freq:e.target.value}))}>
-                  {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
-                </select>
-                <input className="pi" style={{width:48,fontSize:11}} type="number" min="1" max="31" placeholder="Day" title="Day of month this is due" value={newCost.dayOfMonth} onChange={e=>setNewCost(p=>({...p,dayOfMonth:e.target.value}))}/>
-                <button className="btn bp bsm" onClick={()=>{if(!newCost.label.trim()||!newCost.amount)return;setFixedCosts(p=>[...p,{id:"c"+Date.now(),label:newCost.label,amount:+newCost.amount,freq:newCost.freq,dayOfMonth:newCost.dayOfMonth}]);setNewCost({label:"",amount:"",freq:"monthly",dayOfMonth:""});}}>+</button>
-              </div>
+              <CostForm onAdd={c=>setFixedCosts(p=>[...p,c])} theme={theme}/>
               <div className="sl">Log a spend</div>
               <div style={{display:"flex",gap:5,marginBottom:5}}>
                 <input className="ai" type="number" placeholder="€" value={nSAm} onChange={e=>setNSAm(e.target.value)} style={{width:65,flex:"none"}}/>
@@ -1836,22 +1931,22 @@ export default function App(){
         <div className="pg">{pages[tab]&&pages[tab]()}</div>
 
         {/* Draggable FAB */}
-        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x}} onClick={()=>setFabOpen(o=>!o)}>
+        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x,zIndex:fabOpen?202:200}} onClick={()=>setFabOpen(o=>!o)}>
           {fabOpen?"✕":"✦"}
         </button>
 
         {/* FAB menu */}
-        {fabOpen&&<>
-          <div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setFabOpen(false)}/>
-          <div className="fab-menu" style={{top:Math.max(fabPos.y-120,10),left:Math.max(Math.min(fabPos.x-20,window.innerWidth-200),10)}}>
-            <button className="fab-opt" style={{background:"linear-gradient(135deg,#C77DFF,#7B2FBE)",color:"white"}} onClick={()=>{setFabOpen(false);setShowVoice(true);}}>
+        {fabOpen&&<div style={{position:"fixed",inset:0,zIndex:201,pointerEvents:"none"}}>
+          <div style={{position:"absolute",inset:0,pointerEvents:"all"}} onClick={()=>setFabOpen(false)}/>
+          <div className="fab-menu" style={{position:"absolute",top:Math.max(fabPos.y-130,10),left:Math.max(Math.min(fabPos.x-20,window.innerWidth-200),10),pointerEvents:"all",zIndex:202}}>
+            <button className="fab-opt" style={{background:"linear-gradient(135deg,#C77DFF,#7B2FBE)",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowVoice(true);}}>
               🎙️ <span>Voice dump</span><span style={{fontSize:10,opacity:.8}}>Tell me anything</span>
             </button>
-            <button className="fab-opt" style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white"}} onClick={()=>{setFabOpen(false);setShowFocus(true);}}>
+            <button className="fab-opt" style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowFocus(true);}}>
               ⏱️ <span>Focus timer</span><span style={{fontSize:10,opacity:.8}}>Start a session</span>
             </button>
           </div>
-        </>}
+        </div>}
 
         {/* Modals */}
         {showVoice&&<VoiceSheet onClose={()=>setShowVoice(false)} onResult={handleVoiceResult} locs={locs} profName={profName} role={role} theme={theme}/>}
