@@ -442,7 +442,7 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
       }
       onEdit(updated);
     } else if(type==="event"||type==="financial"){
-      const updated={...item,title:title.trim(),date:evDate,startTime:allDay?"":startTime,endTime:allDay?"":endTime,allDay,loc:evLoc};
+      const updated={...item,title:title.trim(),date:evDate,startTime:allDay?"":startTime,endTime:allDay?"":endTime,allDay,loc:evLoc,id:item.id};
       if(hasCost&&cost)updated.cost={amount:+cost,label:title.trim()};
       else updated.cost=null;
       onEdit(updated);
@@ -796,8 +796,12 @@ function VoiceSheet({onClose,onResult,locs,profName,role,theme}){
         messages:[{role:"user",content:"Voice dump: \""+text+"\""}]
       })});
       const data=await res.json();
-      const raw=data.content&&data.content.find(b=>b.type==="text")?data.content.find(b=>b.type==="text").text:"{}";
-      setResult(JSON.parse(raw.trim()));
+      const textBlock=data.content&&data.content.find(b=>b.type==="text");
+      if(!textBlock){setResult({tasks:[],notes:trans,habits:[]});setState("done");return;}
+      const raw=textBlock.text||"{}";
+      const cleaned=raw.replace(/```json/g,"").replace(/```/g,"").trim();
+      const parsed=JSON.parse(cleaned);
+      setResult({tasks:parsed.tasks||[],events:parsed.events||[],spends:parsed.spends||[],symptoms:parsed.symptoms||[],habits:parsed.habits||[]});
     }catch{setResult({tasks:[],notes:text,habits:[]});}
     setState("done");
   };
@@ -850,7 +854,22 @@ function FocusSheet({onClose,energy,tasks,spotifyUrl,theme}){
   const t=THEMES[theme]||THEMES.bloom;
   const el=energy?energy.n:3;
   const vibes={1:{l:"Deep Focus",c:"#4D96FF",e:"🎹"},2:{l:"Lo-Fi Chill",c:"#C77DFF",e:"🎵"},3:{l:"Steady Flow",c:"#6BCB77",e:"🌿"},4:{l:"Feel Good",c:"#FFD93D",e:"✨"},5:{l:"Power Mode",c:"#FF6B6B",e:"🚀"}};
-  const vibe=vibes[Math.min(el,5)]||vibes[3];
+  const getVibe=(taskAv)=>{
+    // High aversion task = motivating music regardless of energy
+    if(taskAv&&taskAv>=3)return vibes[5];
+    // Evening = calmer
+    const h=new Date().getHours();
+    const isLateEve=h>=21||h<6;
+    if(isLateEve)return vibes[1];
+    // Cycle phase adjustments
+    if(wantCycle&&cPhase){
+      if(cPhase.id==="m")return vibes[Math.min(el,2)];
+      if(cPhase.id==="l"&&el<=2)return vibes[1];
+      if(cPhase.id==="o")return vibes[Math.max(el,4)];
+    }
+    return vibes[Math.min(el,5)]||vibes[3];
+  };
+  const vibe=getVibe(null);
   const circ=2*Math.PI*57;
   useEffect(()=>{
     if(tRun&&tSec>0)tiRef.current=setTimeout(()=>setTSec(s=>s-1),1000);
@@ -874,8 +893,9 @@ function FocusSheet({onClose,energy,tasks,spotifyUrl,theme}){
         <div style={{background:"linear-gradient(135deg,"+vibe.c+","+vibe.c+"BB)",borderRadius:10,padding:"10px 11px",marginBottom:9,display:"flex",alignItems:"center",gap:7}}>
           <span style={{fontSize:18}}>{vibe.e}</span>
           <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",flex:1}}>{vibe.l}</div>
-          {!musOn?<button style={{padding:"4px 8px",background:"rgba(255,255,255,.25)",border:"none",color:"white",borderRadius:7,cursor:"pointer",fontFamily:"Nunito",fontWeight:700,fontSize:10}} onClick={()=>{window.open(spotifyUrl||"https://open.spotify.com/search/"+encodeURIComponent(vibe.l+" focus"),"_blank");setMusOn(true);}}>🎵 Spotify</button>
-          :<div style={{display:"flex",alignItems:"center",gap:5}}><div className="mbars">{[1,2,3,4,5].map(i=><div key={i} className="mbar" style={{height:[5,11,8,14,7][i-1]+"px",animationDelay:((i-1)*.15)+"s"}}/>)}</div><button onClick={()=>setMusOn(false)} style={{background:"rgba(255,255,255,.2)",border:"none",color:"white",borderRadius:5,padding:"2px 6px",cursor:"pointer",fontSize:9,fontWeight:700}}>Stop</button></div>}
+          {!musOn?<button style={{padding:"4px 8px",background:"rgba(255,255,255,.25)",border:"none",color:"white",borderRadius:7,cursor:"pointer",fontFamily:"Nunito",fontWeight:700,fontSize:10}} onClick={()=>{const uri=spotifyUrl?spotifyUrl:"spotify:search:"+encodeURIComponent(vibe.l+" focus");const fallback=spotifyUrl||"https://open.spotify.com/search/"+encodeURIComponent(vibe.l+" focus");window.location.href=uri;setTimeout(()=>window.open(fallback,"_blank"),500);setMusOn(true);}}>🎵 Open Spotify</button>
+          :<div style={{display:"flex",alignItems:"center",gap:5}}><div className="mbars">{[1,2,3,4,5].map(i=><div key={i} className="mbar" style={{height:[5,11,8,14,7][i-1]+"px",animationDelay:((i-1)*.15)+"s"}}/>)}</div><button onClick={()=>{window.location.href=spotifyUrl?"spotify:":"spotify:";setMusOn(false);}} style={{background:"rgba(255,255,255,.2)",border:"none",color:"white",borderRadius:5,padding:"2px 6px",cursor:"pointer",fontSize:9,fontWeight:700}}>Open Spotify</button></div>}
+          {musOn&&<div style={{fontSize:8,color:"rgba(255,255,255,.7)",marginTop:2,textAlign:"center"}}>Music plays in Spotify app</div>}
         </div>
         {!tRun&&tSec===0&&<div className="tg2">{[5,10,15,20,25,30,45,60,90].map(m=><button key={m} className={"tc2"+(tPk===m?" on":"")} onClick={()=>start(m)}>{m>=60?m/60+"h":m+"m"}</button>)}</div>}
         {(tRun||tSec>0)&&<>
@@ -1244,6 +1264,9 @@ export default function App(){
   const[tab,setTab]=useState("🏠");
   const[csStep,setCsStep]=useState(0);
   const[showCheckinEdit,setShowCheckinEdit]=useState(false);
+  const[checkinEditStep,setCheckinEditStep]=useState(0);
+  const[showSpendSheet,setShowSpendSheet]=useState(false);
+  const[showCycleSheet,setShowCycleSheet]=useState(false);
   const[savedCheckin,setSavedCheckin]=useLS("bb_checkin_today",null);
   const csDone=savedCheckin&&savedCheckin.date===todayISO();
   const setCsDone=(v)=>{if(v)setSavedCheckin(p=>({...p,date:todayISO()}));};
@@ -1713,26 +1736,58 @@ export default function App(){
           <div className="brow"><button className="btn bp bsm" onClick={()=>{togT(dNudge.id);setNdDis(true);}}>Done! 🎉</button><button className="btn bs bsm" onClick={()=>setNdDis(true)}>Not today</button></div>
         </div>}
 
-        {/* 1. ROUTINE — morning or evening based on time */}
-        <div className="card">
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
-            <div className="ct" style={{marginBottom:0}}>{greeting.isEve?"🌙 Evening Routine":"☀️ Morning Routine"}</div>
-            <span style={{fontSize:9,color:t.acc,fontWeight:700,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>{(greeting.isEve?eveningList:morningList).filter(i=>i.d).length+"/"+(greeting.isEve?eveningList:morningList).length+" · Edit →"}</span>
-          </div>
-          <div className="pw"><div className="pb" style={{width:((greeting.isEve?eveningList:morningList).filter(i=>i.d).length/Math.max((greeting.isEve?eveningList:morningList).length,1)*100)+"%"}}/></div>
-          {(greeting.isEve?eveningList:morningList).map(i=>(
-            <div key={i.id} className="ci">
-              <div className={"cc"+(i.d?" on":"")} onClick={()=>greeting.isEve?setEveningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x)):setMorningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
-              <span className={"cl"+(i.d?" dn":"")}>{i.l}</span>
-              <span className="mb2">{i.t}m</span>
+        {/* 1. ROUTINE — only show the relevant one */}
+        {(()=>{
+          const routineList=greeting.isEve?eveningList:morningList;
+          const setRoutine=greeting.isEve?setEveningList:setMorningList;
+          const remaining=routineList.filter(i=>!i.d);
+          const totalMins=remaining.reduce((a,i)=>a+i.t,0);
+          const donePct=routineList.filter(i=>i.d).length/Math.max(routineList.length,1);
+          return<div className="card">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+              <div className="ct" style={{marginBottom:0}}>{greeting.isEve?"🌙 Evening Routine":"☀️ Morning Routine"}</div>
+              <span style={{fontSize:9,color:t.acc,fontWeight:700,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>{routineList.filter(i=>i.d).length+"/"+routineList.length+" · Edit →"}</span>
             </div>
-          ))}
-        </div>
+            <div className="pw" style={{marginBottom:6}}><div className="pb" style={{width:(donePct*100)+"%"}}/></div>
+            {routineList.map(i=>(
+              <div key={i.id} className="ci">
+                <div className={"cc"+(i.d?" on":"")} onClick={()=>setRoutine(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
+                <span className={"cl"+(i.d?" dn":"")}>{i.l}</span>
+                <span className="mb2">{i.t}m</span>
+              </div>
+            ))}
+            {remaining.length>0&&totalMins>0&&<button className="btn bp bsm" style={{marginTop:8,width:"100%"}} onClick={()=>{setShowFocus(true);}}>
+              ⏱️ Start {totalMins} min focus to complete routine
+            </button>}
+          </div>;
+        })()}
 
-        {/* 2. TODAY SCHEDULE — all events, no compact limit */}
+        {/* 2. TODAY SCHEDULE — date, mood/energy/cycle, all events */}
         <div className="card" style={{border:"2px solid "+t.acc+"44"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-            <div className="ct" style={{marginBottom:0}}>📆 Today's Schedule</div>
+          {/* Date */}
+          <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark,marginBottom:9}}>
+            {new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}
+          </div>
+          {/* Mood / Energy / Cycle row — all tappable */}
+          {csDone&&<div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+            {mood&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"5px 9px",borderRadius:9,background:t.bg,cursor:"pointer",border:"1.5px solid #EEE"}} onClick={()=>{setCheckinEditStep(0);setShowCheckinEdit(true);}}>
+              <span style={{fontSize:16}}>{mood.e}</span>
+              <div><div style={{fontSize:8,fontWeight:800,color:"#BBB",textTransform:"uppercase",letterSpacing:.5}}>Mood</div><div style={{fontSize:10,fontWeight:700,color:t.dark}}>{mood.l}</div></div>
+              <span style={{fontSize:9,color:"#BBB"}}>✏️</span>
+            </div>}
+            {energy&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"5px 9px",borderRadius:9,background:t.bg,cursor:"pointer",border:"1.5px solid #EEE"}} onClick={()=>{setCheckinEditStep(1);setShowCheckinEdit(true);}}>
+              <span style={{fontSize:16}}>{energy.e}</span>
+              <div><div style={{fontSize:8,fontWeight:800,color:"#BBB",textTransform:"uppercase",letterSpacing:.5}}>Energy</div><div style={{fontSize:10,fontWeight:700,color:t.dark}}>{energy.l}</div></div>
+              <span style={{fontSize:9,color:"#BBB"}}>✏️</span>
+            </div>}
+            {wantCycle&&cPhase&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"5px 9px",borderRadius:9,background:cPhase.c+"15",cursor:"pointer",border:"1.5px solid "+cPhase.c+"44"}} onClick={()=>setShowCycleSheet(true)}>
+              <span style={{fontSize:16}}>{cPhase.e}</span>
+              <div><div style={{fontSize:8,fontWeight:800,color:cPhase.c,textTransform:"uppercase",letterSpacing:.5}}>{"Day "+cDay}</div><div style={{fontSize:10,fontWeight:700,color:cPhase.c}}>{cPhase.l}</div></div>
+              <span style={{fontSize:9,color:cPhase.c}}>✏️</span>
+            </div>}
+          </div>}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
+            <div style={{fontSize:10,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase"}}>Schedule</div>
             <button className="btn bp bsm" onClick={()=>{setSelDay(todayISO());setShowAddEv(true);}}>+ Add</button>
           </div>
           <DayPanel iso={todayISO()} compact={false}/>
@@ -1742,7 +1797,7 @@ export default function App(){
         <div style={{display:"flex",gap:9,marginBottom:9}}>
           {/* Spending panel */}
           <div style={{flex:1}}>
-            {wantSpend&&finSetup?<div className="card" style={{marginBottom:0,cursor:"pointer",height:"100%"}} onClick={()=>setTab("⚙️")}>
+            {wantSpend&&finSetup?<div className="card" style={{marginBottom:0,cursor:"pointer",height:"100%"}} onClick={()=>setShowSpendSheet(true)}>
               <div className="ct" style={{fontSize:12,marginBottom:5}}>💰 Today</div>
               <div style={{fontFamily:"Fredoka One",fontSize:22,color:t.acc}}>{"€"+todaySpent.toFixed(0)}</div>
               <div style={{fontSize:9,color:"#AAA",fontWeight:600,marginBottom:4}}>{"of €"+dailyBudget.toFixed(0)+"/day"}</div>
@@ -1756,7 +1811,7 @@ export default function App(){
           </div>
           {/* Cycle + energy panel */}
           <div style={{flex:1}}>
-            {wantCycle&&cPhase?<div className="card" style={{marginBottom:0,background:cPhase.c+"10",cursor:"pointer"}} onClick={()=>setTab("📆")}>
+            {wantCycle&&cPhase?<div className="card" style={{marginBottom:0,background:cPhase.c+"10",cursor:"pointer"}} onClick={()=>setShowCycleSheet(true)}>
               <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
                 <span style={{fontSize:22}}>{cPhase.e}</span>
                 <div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cPhase.c}}>{cPhase.l}</div><div style={{fontSize:9,fontWeight:700,color:"#888"}}>{"Day "+cDay}</div></div>
@@ -1773,19 +1828,22 @@ export default function App(){
         </div>
 
         {/* 4. REWARDS — clear and prominent */}
-        {nearestReward&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:13,padding:13,marginBottom:9,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:44,height:44,borderRadius:11,background:"rgba(255,255,255,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{nearestReward.ic}</div>
-            <div style={{flex:1}}>
-              <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",marginBottom:2}}>🏆 Next reward</div>
-              <div style={{fontSize:11,fontWeight:700,color:"white",marginBottom:4}}>{nearestReward.rw}</div>
-              <div style={{background:"rgba(255,255,255,.2)",borderRadius:6,height:7,overflow:"hidden"}}>
-                <div style={{height:"100%",borderRadius:6,background:"white",width:(Math.min(nearestReward.cur/Math.max(nearestReward.max,1),1)*100)+"%",transition:"width .4s"}}/>
+        {nearestReward&&(()=>{
+          const rewardDesc=nearestReward.ty==="ms"||nearestReward.ty==="ms14"?"morning streak":nearestReward.ty==="es"?"evening streak":nearestReward.ty==="ml"?"mood check-in":nearestReward.ty==="dt"?"tasks completed":nearestReward.ty==="dr"?"dreaded task":"step";
+          return<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:13,padding:13,marginBottom:9,cursor:"pointer"}} onClick={()=>{setTab("⚙️");setTimeout(()=>{const el=document.getElementById("rewards-sect");if(el)el.scrollIntoView({behavior:"smooth"});},100);}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:44,height:44,borderRadius:11,background:"rgba(255,255,255,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{nearestReward.ic}</div>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",marginBottom:2}}>🏆 Next reward</div>
+                <div style={{fontSize:11,fontWeight:700,color:"white",marginBottom:4}}>{nearestReward.rw}</div>
+                <div style={{background:"rgba(255,255,255,.2)",borderRadius:6,height:7,overflow:"hidden"}}>
+                  <div style={{height:"100%",borderRadius:6,background:"white",width:(Math.min(nearestReward.cur/Math.max(nearestReward.max,1),1)*100)+"%",transition:"width .4s"}}/>
+                </div>
+                <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.8)",marginTop:2}}>{nearestReward.gap===1?"1 more "+rewardDesc+" to earn this!":nearestReward.gap+" more "+rewardDesc+"s to earn this"}</div>
               </div>
-              <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.8)",marginTop:2}}>{nearestReward.gap===1?"1 more to earn it!":nearestReward.gap+" more to earn it"}</div>
             </div>
-          </div>
-        </div>}
+          </div>;
+        })()}
 
         {/* Evening check-in */}
         {greeting.isEve&&!isEvDone&&<div className="card" style={{border:"2px solid #9B5DE5"}}>
@@ -1951,13 +2009,13 @@ export default function App(){
 
         {ov.filter(t2=>fLoc==="All"||t2.lo===fLoc).length>0&&<>
           <div className="sl">⚠️ Overdue</div>
-          {ov.filter(t2=>fLoc==="All"||t2.lo===fLoc).map(t2=><TC key={t2.id} t2={t2}/>)}
+          {ov.filter(t2=>fLoc==="All"||t2.lo===fLoc).map(t2=><div key={t2.id} style={{cursor:"pointer"}} onClick={()=>setDetailItem({item:t2,type:"task",iso:t2.deadline||todayISO()})}><TC t2={t2}/></div>)}
         </>}
 
         <div className="sl">📋 Active</div>
         {getSorted(fLoc).filter(t2=>!t2.ov).length===0&&!ov.length
           ?<div className="empty"><div className="empty-i">🎉</div><p>Nothing here — add a task above or try the voice button!</p></div>
-          :getSorted(fLoc).filter(t2=>!t2.ov).map(t2=><TC key={t2.id} t2={t2}/>)}
+          :getSorted(fLoc).filter(t2=>!t2.ov).map(t2=><div key={t2.id} style={{cursor:"pointer"}} onClick={()=>setDetailItem({item:t2,type:"task",iso:t2.deadline||todayISO()})}><TC t2={t2}/></div>)}
 
         {done.length>0&&<>
           <div className="sl">{"✅ Done ("+done.length+")"}</div>
@@ -2017,16 +2075,14 @@ export default function App(){
     <>
       <style>{makeCSS(t)}</style>
       <div className="app">
-        <div className="hdr">
+        <div className="hdr" style={{cursor:"pointer"}} onClick={()=>window.location.reload()}>
           <div className="hrow">
             <div><div className="ht">BrainBloom 🧠</div><div className="hs">{greeting.text+" "+greeting.emoji}</div></div>
-            <div className="dbg">{todayStr}</div>
+            <div style={{display:"flex",alignItems:"center",gap:7}}>
+              <div className="dbg" style={{cursor:"pointer"}} onClick={e=>{e.stopPropagation();setTab("🏠");setSelDay(todayISO());}}>{todayStr}</div>
+            </div>
           </div>
-          {csDone&&mood&&<div className="pills">
-            <span className="pill" style={{cursor:"pointer",userSelect:"none"}} onClick={()=>setShowCheckinEdit(true)}>{mood.e+" "+mood.l} ✏️</span>
-            {energy&&<span className="pill">{energy.e+" "+energy.l}</span>}
-            {wantCycle&&cPhase&&<span className="pill">{cPhase.e+" Day "+cDay}</span>}
-          </div>}
+
         </div>
         <div className="tabs">
           {["🏠","📆","✅","⚙️"].map(tb=>(
@@ -2063,16 +2119,65 @@ export default function App(){
         {showCheckinEdit&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowCheckinEdit(false);}}>
           <div className="modal" style={{padding:20}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
-              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>Edit today's check-in</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>{checkinEditStep===0?"Edit mood":checkinEditStep===1?"Edit energy":"Edit symptoms"}</div>
               <button className="db" onClick={()=>setShowCheckinEdit(false)}>×</button>
             </div>
-            <div className="sl">Mood</div>
-            <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(mood&&mood.e===m.e?" on":"")} onClick={()=>setMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
-            <div className="sl">Energy</div>
-            <div className="erow">{ENERGIES.map(e=><button key={e.e} className={"eb"+(energy&&energy.e===e.e?" on":"")} onClick={()=>setEnergy(e)}>{e.e}<span>{e.l}</span></button>)}</div>
-            <div className="sl">Symptoms</div>
-            <div className="sg" style={{marginBottom:11}}>{SYMPTOMS.map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
-            <button className="nb" style={{marginTop:0}} onClick={()=>setShowCheckinEdit(false)}>Save ✓</button>
+            {checkinEditStep===0&&<>
+              <div className="sl">How are you feeling?</div>
+              <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(mood&&mood.e===m.e?" on":"")} onClick={()=>setMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
+            </>}
+            {checkinEditStep===1&&<>
+              <div className="sl">Energy level?</div>
+              <div className="erow">{ENERGIES.map(e=><button key={e.e} className={"eb"+(energy&&energy.e===e.e?" on":"")} onClick={()=>setEnergy(e)}>{e.e}<span>{e.l}</span></button>)}</div>
+            </>}
+            {checkinEditStep===2&&<>
+              <div className="sl">Symptoms</div>
+              <div className="sg" style={{marginBottom:11}}>{SYMPTOMS.map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
+            </>}
+            {checkinEditStep!==2&&<div style={{display:"flex",gap:6,marginTop:9}}>
+              <button className="nb" style={{marginTop:0,flex:2}} onClick={()=>setShowCheckinEdit(false)}>Save ✓</button>
+              <button className="btn bs" style={{flex:1}} onClick={()=>setCheckinEditStep(s=>s===0?2:s-1)}>Other</button>
+            </div>}
+            {checkinEditStep===2&&<button className="nb" style={{marginTop:9}} onClick={()=>setShowCheckinEdit(false)}>Save ✓</button>}
+          </div>
+        </div>}
+
+        {showSpendSheet&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowSpendSheet(false);}}>
+          <div className="modal" style={{padding:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>💰 Log a Spend</div>
+              <button className="db" onClick={()=>setShowSpendSheet(false)}>×</button>
+            </div>
+            {finSetup&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:10,padding:"9px 12px",marginBottom:11,color:"white"}}>
+              <div style={{fontSize:9,fontWeight:700,opacity:.8}}>Daily budget</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:20}}>{"€"+dailyBudget.toFixed(0)}</div>
+              <div style={{fontSize:9,opacity:.8}}>{"Spent today: €"+todaySpent.toFixed(2)}</div>
+            </div>}
+            <div style={{display:"flex",gap:6,marginBottom:8}}>
+              <input className="ai" type="number" placeholder="€ Amount" value={nSAm} onChange={e=>setNSAm(e.target.value)} style={{width:80,flex:"none"}}/>
+              <input className="ai" placeholder="What was it?" value={nSLb} onChange={e=>setNSLb(e.target.value)}/>
+            </div>
+            <div className="fr" style={{marginBottom:9}}>{SCATS.map(c=><button key={c.id} className={"fc"+(nSCa===c.id?" on":"")} style={nSCa===c.id?{background:c.c,borderColor:c.c}:{}} onClick={()=>setNSCa(c.id)}>{c.e+" "+c.l}</button>)}</div>
+            <button className="btn bp" style={{width:"100%"}} onClick={()=>{if(!nSAm||isNaN(nSAm))return;setSpends(ss=>[{id:"s"+Date.now(),am:+nSAm,ca:nSCa,lb:nSLb||(SCATS.find(c=>c.id===nSCa)||SCATS[SCATS.length-1]).l,dt:new Date().toISOString()},...ss]);setNSAm("");setNSLb("");setShowSpendSheet(false);}}>Log 💳</button>
+            {todaySpends.length>0&&<><div className="sl">Today's spends</div>{todaySpends.map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",alignItems:"center",gap:7,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{fontSize:15}}>{cat.e}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:10}}>{s.lb}</div></div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cat.c}}>{"€"+s.am.toFixed(2)}</div><button className="db" style={{width:20,height:20,fontSize:10}} onClick={()=>setSpends(p=>p.filter(x=>x.id!==s.id))}>×</button></div>;})}
+            </>}
+          </div>
+        </div>}
+        {showCycleSheet&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowCycleSheet(false);}}>
+          <div className="modal" style={{padding:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>🌙 Cycle</div>
+              <button className="db" onClick={()=>setShowCycleSheet(false)}>×</button>
+            </div>
+            {cPhase&&<div style={{background:cPhase.c+"18",borderRadius:10,padding:"9px 12px",marginBottom:11,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:22}}>{cPhase.e}</span>
+              <div><div style={{fontFamily:"Fredoka One",fontSize:14,color:cPhase.c}}>{cPhase.l+" Phase — Day "+cDay}</div><div style={{fontSize:10,fontWeight:600,color:"#555"}}>{cPhase.energy+" energy"}</div></div>
+            </div>}
+            <div className="pf"><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
+            <div className="pf"><label>Cycle length (days)</label><input className="pi" type="number" min="21" max="45" value={cLen} onChange={e=>setCLen(+e.target.value)}/></div>
+            <div className="sl">Log today's symptoms</div>
+            <div className="sg" style={{marginBottom:11}}>{["Period started 🩸","Spotting","Cramps 😣","Back pain 💢","Headache 🤕","Bloating 🤰","Fatigue 😓","Mood swings 😤","Tender breasts","Nausea 🤢","Anxiety 😰","Brain fog 🌫️","Insomnia 😵"].map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
+            <button className="nb" style={{marginTop:0}} onClick={()=>setShowCycleSheet(false)}>Save ✓</button>
           </div>
         </div>}
         {showTour&&<TourOverlay onDone={()=>{setShowTour(false);setTourDone(true);}} onSkip={()=>{setShowTour(false);setTourSkipped(true);}} theme={theme}/>}
