@@ -190,13 +190,13 @@ const LOC_EMOJIS=["🏠","💼","🎓","🚌","🛍️","🏋️","🌿","🏥"]
 const getLC=(lo,locs)=>{const i=locs.indexOf(lo);return i>=0?LOC_COLORS[i%LOC_COLORS.length]:"#888";};
 const getLE=(lo,locs)=>{const i=locs.indexOf(lo);return i>=0?LOC_EMOJIS[i%LOC_EMOJIS.length]:"📍";};
 
-function makeCSS(t){return `@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+function makeCSS(t){return `
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .app{max-width:430px;margin:0 auto;min-height:100vh;background:${t.bg};padding-bottom:85px;}
 .hdr{background:linear-gradient(135deg,${t.h1},${t.h2} 50%,${t.h3});padding:14px 15px 11px;position:relative;overflow:hidden;}
 .hdr::before{content:'';position:absolute;inset:0;opacity:.06;background:radial-gradient(circle at 20% 50%,white 1px,transparent 1px) 0 0/28px 28px;}
-.ht{font-family:"'Fredoka One',cursive";font-size:21px;color:white;position:relative;}
+.ht{font-family:'Fredoka One',cursive;font-size:21px;color:white;position:relative;}
 .hs{font-size:10px;color:rgba(255,255,255,.85);font-weight:600;position:relative;}
 .hrow{display:flex;justify-content:space-between;align-items:center;}
 .dbg{background:rgba(255,255,255,.25);border-radius:16px;padding:2px 8px;font-size:10px;font-weight:700;color:white;}
@@ -207,7 +207,7 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .tab.on{background:${t.acc};color:white;border-color:${t.acc};}
 .pg{padding:11px;}
 .card{background:${t.card};border-radius:13px;padding:13px;margin-bottom:9px;box-shadow:0 2px 10px rgba(0,0,0,.06);border:2px solid transparent;}
-.ct{font-family:"'Fredoka One',cursive";font-size:15px;color:${t.dark};margin-bottom:7px;display:flex;align-items:center;gap:5px;}
+.ct{font-family:'Fredoka One',cursive;font-size:15px;color:${t.dark};margin-bottom:7px;display:flex;align-items:center;gap:5px;}
 .q{font-size:13px;font-weight:700;color:${t.dark};margin-bottom:11px;line-height:1.4;}
 .erow{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:11px;}
 .eb{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 6px;border-radius:10px;border:2px solid #EEE;background:${t.card};cursor:pointer;transition:all .2s;font-size:18px;min-width:44px;}
@@ -371,24 +371,24 @@ function PWAIntro({onDone}){
         <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#2D2D2D",marginBottom:6}}>BrainBloom</div>
         <div style={{fontSize:13,fontWeight:700,color:"#888",marginBottom:20,lineHeight:1.5}}>Your personal planner that works with you.</div>
         <div style={{background:"linear-gradient(135deg,#FFF4CC,#FFE5E5)",borderRadius:14,padding:"14px 16px",marginBottom:18,textAlign:"left"}}>
-          <div style={{fontFamily:"Fredoka One",fontSize:14,color:"#FF6B6B",marginBottom:8}}>📱 Save to your home screen first</div>
+          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:14,color:"#FF6B6B",marginBottom:8}}>📱 Save to your home screen first</div>
           <p style={{fontSize:11,fontWeight:600,color:"#444",lineHeight:1.6,marginBottom:12}}>This keeps all your data safe between sessions. If you set up first and save later, you may need to start again.</p>
-          {(isIOS||(!isIOS&&!isAndroid))&&<div style={{background:"white",borderRadius:10,padding:"10px 12px",marginBottom:isAndroid?8:0}}>
-            <div style={{fontSize:11,fontWeight:800,color:"#0077B6",marginBottom:4}}>📱 iPhone / iPad (Safari)</div>
-            <div style={{fontSize:11,fontWeight:600,color:"#444",lineHeight:1.6}}>
-              1. Tap the <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 5px",fontWeight:800}}>Share</span> button at the bottom of Safari<br/>
-              2. Scroll down and tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 5px",fontWeight:800}}>Add to Home Screen</span><br/>
-              3. Tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 5px",fontWeight:800}}>Add</span> in the top right
+          <div style={{background:"white",borderRadius:10,padding:"10px 12px",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:800,color:"#0077B6",marginBottom:4}}>🍎 iPhone / iPad — Safari</div>
+            <div style={{fontSize:11,fontWeight:600,color:"#444",lineHeight:1.8}}>
+              1. Tap the <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 6px",fontWeight:800}}>Share ⬆️</span> button at the bottom<br/>
+              2. Scroll and tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 6px",fontWeight:800}}>Add to Home Screen</span><br/>
+              3. Tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 6px",fontWeight:800}}>Add</span> in the top right
             </div>
-          </div>}
-          {(isAndroid||(!isIOS&&!isAndroid))&&<div style={{background:"white",borderRadius:10,padding:"10px 12px",marginTop:isIOS?8:0}}>
-            <div style={{fontSize:11,fontWeight:800,color:"#2D6A4F",marginBottom:4}}>🤖 Android (Chrome)</div>
-            <div style={{fontSize:11,fontWeight:600,color:"#444",lineHeight:1.6}}>
-              1. Tap the <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 5px",fontWeight:800}}>⋮</span> menu in the top right of Chrome<br/>
-              2. Tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 5px",fontWeight:800}}>Add to Home screen</span><br/>
-              3. Tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 5px",fontWeight:800}}>Add</span>
+          </div>
+          <div style={{background:"white",borderRadius:10,padding:"10px 12px"}}>
+            <div style={{fontSize:11,fontWeight:800,color:"#2D6A4F",marginBottom:4}}>🤖 Android — Chrome</div>
+            <div style={{fontSize:11,fontWeight:600,color:"#444",lineHeight:1.8}}>
+              1. Tap the <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 6px",fontWeight:800}}>⋮</span> menu in the top right<br/>
+              2. Tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 6px",fontWeight:800}}>Add to Home screen</span><br/>
+              3. Tap <span style={{background:"#EEF2FF",borderRadius:4,padding:"1px 6px",fontWeight:800}}>Add</span>
             </div>
-          </div>}
+          </div>
         </div>
         <button onClick={onDone} style={{width:"100%",padding:14,background:"linear-gradient(135deg,#FF6B6B,#FFD93D)",color:"white",border:"none",borderRadius:13,fontFamily:"'Fredoka One',cursive",fontSize:16,cursor:"pointer",marginBottom:8,boxShadow:"0 4px 14px rgba(255,107,107,.4)"}}>
           ✓ I have saved it — let's go!
@@ -1077,27 +1077,37 @@ export default function App(){
   useEffect(()=>{fabPosRef.current=fabPos;},[fabPos]);
   useEffect(()=>{
     const fab=fabRef.current;if(!fab)return;
+    let moved=false;
     const onStart=(e)=>{
       const p=e.touches?e.touches[0]:e;
-      dragRef.current={active:true,sx:p.clientX,sy:p.clientY,px:fabPosRef.current.x,py:fabPosRef.current.y,moved:false};
-      e.preventDefault();
+      dragRef.current={active:true,sx:p.clientX,sy:p.clientY,px:fabPosRef.current.x,py:fabPosRef.current.y};
+      moved=false;
+      e.stopPropagation();
     };
     const onMove=(e)=>{
       if(!dragRef.current.active)return;
       const p=e.touches?e.touches[0]:e;
       const dx=p.clientX-dragRef.current.sx,dy=p.clientY-dragRef.current.sy;
-      if(Math.abs(dx)>8||Math.abs(dy)>8)dragRef.current.moved=true;
-      setFabPos({x:Math.max(10,Math.min(window.innerWidth-62,dragRef.current.px+dx)),y:Math.max(10,Math.min(window.innerHeight-62,dragRef.current.py+dy))});
-      e.preventDefault();
+      if(Math.abs(dx)>6||Math.abs(dy)>6){
+        moved=true;
+        setFabPos({x:Math.max(10,Math.min(window.innerWidth-62,dragRef.current.px+dx)),y:Math.max(10,Math.min(window.innerHeight-62,dragRef.current.py+dy))});
+        e.preventDefault();
+      }
     };
-    const onEnd=()=>{if(!dragRef.current.moved)setFabOpen(o=>!o);dragRef.current.active=false;};
-    fab.addEventListener("mousedown",onStart);fab.addEventListener("touchstart",onStart,{passive:false});
-    window.addEventListener("mousemove",onMove);window.addEventListener("touchmove",onMove,{passive:false});
-    window.addEventListener("mouseup",onEnd);window.addEventListener("touchend",onEnd);
+    const onEnd=()=>{dragRef.current.active=false;};
+    fab.addEventListener("touchstart",onStart,{passive:true});
+    fab.addEventListener("mousedown",onStart);
+    window.addEventListener("touchmove",onMove,{passive:false});
+    window.addEventListener("mousemove",onMove);
+    window.addEventListener("touchend",onEnd);
+    window.addEventListener("mouseup",onEnd);
     return()=>{
-      fab.removeEventListener("mousedown",onStart);fab.removeEventListener("touchstart",onStart);
-      window.removeEventListener("mousemove",onMove);window.removeEventListener("touchmove",onMove);
-      window.removeEventListener("mouseup",onEnd);window.removeEventListener("touchend",onEnd);
+      fab.removeEventListener("touchstart",onStart);
+      fab.removeEventListener("mousedown",onStart);
+      window.removeEventListener("touchmove",onMove);
+      window.removeEventListener("mousemove",onMove);
+      window.removeEventListener("touchend",onEnd);
+      window.removeEventListener("mouseup",onEnd);
     };
   },[]);
 
@@ -1826,7 +1836,7 @@ export default function App(){
         <div className="pg">{pages[tab]&&pages[tab]()}</div>
 
         {/* Draggable FAB */}
-        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x}}>
+        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x}} onClick={()=>setFabOpen(o=>!o)}>
           {fabOpen?"✕":"✦"}
         </button>
 
