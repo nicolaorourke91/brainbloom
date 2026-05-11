@@ -422,7 +422,18 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
   const icon=type==="task"?"✅":type==="financial"?"💰":"📅";
 
   const saveEdit=()=>{
-    if(type==="event"||type==="financial"){
+    if(item.finType){
+      // Finance item edit — pass back with updated fields so parent can update incomes/costs
+      const updated={...item,title:title.trim()};
+      if(item.finType==="income_once"){updated.date=evDate;updated.amount=+cost;}
+      else if(item.finType==="income"||item.finType==="cost"){
+        updated.amount=+cost;
+        if(["monthly","annually"].includes(item.freq))updated.dayOfMonth=evDate;
+        if(["weekly","fortnightly"].includes(item.freq))updated.dayOfWeek=startTime;
+        if(item.freq==="fortnightly")updated.startDate=endTime;
+      }
+      onEdit(updated);
+    } else if(type==="event"||type==="financial"){
       const updated={...item,title:title.trim(),date:evDate,startTime:allDay?"":startTime,endTime:allDay?"":endTime,allDay,loc:evLoc};
       if(hasCost&&cost)updated.cost={amount:+cost,label:title.trim()};
       else updated.cost=null;
@@ -448,12 +459,14 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
         {!editing&&<>
           <div style={{background:t.bg,borderRadius:11,padding:"11px 13px",marginBottom:11}}>
             <div style={{fontFamily:"Fredoka One",fontSize:17,color:t.dark,marginBottom:5}}>{item.title||item.tl}</div>
-            {(item.date||item.deadline)&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>📅 {new Date((item.date||item.deadline)+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>}
+            {item.finType&&<div style={{fontSize:11,fontWeight:700,color:"#F08C00",marginBottom:3}}>💰 {item.finType==="income"||item.finType==="income_once"?"Income":"Expense"}{item.amount?" · €"+item.amount:""}{item.cost?" · €"+item.cost.amount:""}</div>}
+            {item.freq&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>🔁 {item.freq}</div>}
+            {(item.date||item.deadline)&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>📅 {new Date((item.date||item.deadline)+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>}
             {!item.allDay&&item.startTime&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>🕐 {item.startTime}{item.endTime?" – "+item.endTime:""}</div>}
-            {item.allDay&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>📅 All day</div>}
-            {(item.loc||item.lo)&&<div style={{fontSize:11,fontWeight:600,color:lc(item.loc||item.lo),marginBottom:3}}>{le(item.loc||item.lo)}{item.loc||item.lo}</div>}
-            {item.recur&&item.recur!=="none"&&<div style={{fontSize:11,fontWeight:600,color:"#4D96FF",marginBottom:3}}>🔁 Repeats {item.recur}</div>}
-            {item.cost&&<div style={{fontSize:11,fontWeight:700,color:"#F08C00",marginBottom:3}}>💰 €{item.cost.amount}</div>}
+            {item.allDay&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>📅 All day</div>}
+            {(item.loc||item.lo)&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:lc(item.loc||item.lo),marginBottom:3}}>{le(item.loc||item.lo)}{item.loc||item.lo}</div>}
+            {item.recur&&item.recur!=="none"&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:"#4D96FF",marginBottom:3}}>🔁 Repeats {item.recur}</div>}
+            {item.cost&&!item.finType&&<div style={{fontSize:11,fontWeight:700,color:"#F08C00",marginBottom:3}}>💰 €{item.cost.amount}</div>}
             {item.pr&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>Priority: {item.pr==="high"?"🔴 High":item.pr==="medium"?"🟡 Medium":"🟢 Low"}</div>}
             {item.mn&&<div style={{fontSize:11,fontWeight:600,color:"#888"}}>⏱ {item.mn} min</div>}
           </div>
@@ -464,23 +477,36 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
         </>}
 
         {editing&&<>
-          <div className="pf"><label>Title</label><input className="pi" value={title} onChange={e=>setTitle(e.target.value)}/></div>
-          {(type==="event"||type==="financial")&&<>
-            <div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
-            <div className="tog-row" style={{marginBottom:7}}><div><div className="tog-lbl">All day</div></div><button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/></div>
-            {!allDay&&<div style={{display:"flex",gap:7,marginBottom:7}}>
-              <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}/></div>
-              <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
-            </div>}
-            <div className="tog-row" style={{marginBottom:hasCost?6:7}}><div><div className="tog-lbl">💰 Has a cost</div></div><button className={"tog"+(hasCost?" on":"")} onClick={()=>setHasCost(s=>!s)}/></div>
-            {hasCost&&<div className="pf"><label>Amount (€)</label><input className="pi" type="number" value={cost} onChange={e=>setCost(e.target.value)}/></div>}
+          {item.finType?<>
+            {/* Finance item edit */}
+            <div className="pf"><label>Label</label><input className="pi" value={title} onChange={e=>setTitle(e.target.value)}/></div>
+            <div className="pf"><label>Amount (€)</label><input className="pi" type="number" value={cost} onChange={e=>setCost(e.target.value)}/></div>
+            {(item.finType==="income_once")&&<div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>}
+            {(item.finType==="income"||item.finType==="cost")&&item.freq&&<>
+              {["monthly","annually"].includes(item.freq)&&<div className="pf"><label>Day of month</label><input className="pi" type="number" min="1" max="31" placeholder="e.g. 25" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>}
+              {["weekly","fortnightly"].includes(item.freq)&&<div className="pf"><label>Day of week</label><select className="pi" value={startTime} onChange={e=>setStartTime(e.target.value)}>{["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}</select></div>}
+              {item.freq==="fortnightly"&&<div className="pf"><label>Starting from (sets which fortnight)</label><input className="pi" type="date" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>}
+            </>}
+          </>:<>
+            {/* Regular event/task edit */}
+            <div className="pf"><label>Title</label><input className="pi" value={title} onChange={e=>setTitle(e.target.value)}/></div>
+            {(type==="event"||type==="financial")&&<>
+              <div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
+              <div className="tog-row" style={{marginBottom:7}}><div><div className="tog-lbl">All day</div></div><button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/></div>
+              {!allDay&&<div style={{display:"flex",gap:7,marginBottom:7}}>
+                <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}/></div>
+                <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
+              </div>}
+              <div className="tog-row" style={{marginBottom:hasCost?6:7}}><div><div className="tog-lbl">💰 Has a cost</div></div><button className={"tog"+(hasCost?" on":"")} onClick={()=>setHasCost(s=>!s)}/></div>
+              {hasCost&&<div className="pf"><label>Amount (€)</label><input className="pi" type="number" value={cost} onChange={e=>setCost(e.target.value)}/></div>}
+            </>}
+            {type==="task"&&<>
+              <div className="pf"><label>Deadline (optional)</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
+              <div className="pf"><label>Priority</label><div style={{display:"flex",gap:4}}>{[["high","🔴 High"],["medium","🟡 Medium"],["low","🟢 Low"]].map(([v,l])=><button key={v} style={{flex:1,padding:"6px 4px",borderRadius:9,border:"2px solid "+(nPri===v?t.acc:"#EEE"),background:nPri===v?t.acc:"white",color:nPri===v?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setNPri(v)}>{l}</button>)}</div></div>
+              <div className="pf"><label>Estimated time</label><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{[5,10,15,30,45,60].map(m=><button key={m} style={{padding:"5px 8px",borderRadius:9,border:"2px solid "+(nMin===m?t.acc:"#EEE"),background:nMin===m?t.acc:"white",color:nMin===m?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:11,cursor:"pointer"}} onClick={()=>setNMin(m)}>{m+"m"}</button>)}</div></div>
+            </>}
+            <div className="pf"><label>Location</label><div className="fr">{locs.map(l=><button key={l} style={{flexShrink:0,padding:"4px 8px",borderRadius:13,border:"2px solid "+(evLoc===l?t.acc:"#EEE"),background:evLoc===l?t.acc:"white",color:evLoc===l?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setEvLoc(l)}>{le(l)}{l}</button>)}</div></div>
           </>}
-          {type==="task"&&<>
-            <div className="pf"><label>Deadline (optional)</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
-            <div className="pf"><label>Priority</label><div style={{display:"flex",gap:4}}>{[["high","🔴 High"],["medium","🟡 Medium"],["low","🟢 Low"]].map(([v,l])=><button key={v} style={{flex:1,padding:"6px 4px",borderRadius:9,border:"2px solid "+(nPri===v?t.acc:"#EEE"),background:nPri===v?t.acc:"white",color:nPri===v?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setNPri(v)}>{l}</button>)}</div></div>
-            <div className="pf"><label>Estimated time</label><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{[5,10,15,30,45,60].map(m=><button key={m} style={{padding:"5px 8px",borderRadius:9,border:"2px solid "+(nMin===m?t.acc:"#EEE"),background:nMin===m?t.acc:"white",color:nMin===m?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:11,cursor:"pointer"}} onClick={()=>setNMin(m)}>{m+"m"}</button>)}</div></div>
-          </>}
-          <div className="pf"><label>Location</label><div className="fr">{locs.map(l=><button key={l} style={{flexShrink:0,padding:"4px 8px",borderRadius:13,border:"2px solid "+(evLoc===l?t.acc:"#EEE"),background:evLoc===l?t.acc:"white",color:evLoc===l?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setEvLoc(l)}>{le(l)}{l}</button>)}</div></div>
           <div style={{display:"flex",gap:7}}>
             <button className="btn bp" style={{flex:2}} onClick={saveEdit}>Save changes</button>
             <button className="btn bs" style={{flex:1}} onClick={()=>setEditing(false)}>Cancel</button>
@@ -498,10 +524,11 @@ function IncomeForm({onAdd,theme}){
   const[freq,setFreq]=useState("monthly");
   const[dayOfMonth,setDayOfMonth]=useState("");
   const[dayOfWeek,setDayOfWeek]=useState("Monday");
+  const[startDate,setStartDate]=useState("");
   const add=()=>{
     if(!label.trim()||!amount)return;
-    onAdd({id:"i"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:""});
-    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");
+    onAdd({id:"i"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:"",startDate:freq==="fortnightly"?startDate:""});
+    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");setStartDate("");
   };
   return(
     <div style={{marginBottom:4}}>
@@ -522,7 +549,11 @@ function IncomeForm({onAdd,theme}){
         <select className="pi" style={{flex:1,fontSize:11}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
           {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
         </select>
-        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
+      </div>}
+      {freq==="fortnightly"&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Starting from:</span>
+        <input className="pi" style={{flex:1,fontSize:11}} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/>
+        <span style={{fontSize:9,color:"#AAA"}}>sets which week</span>
       </div>}
       <button className="btn bp bsm" onClick={add}>+ Add</button>
     </div>
@@ -536,10 +567,11 @@ function CostForm({onAdd,theme}){
   const[freq,setFreq]=useState("monthly");
   const[dayOfMonth,setDayOfMonth]=useState("");
   const[dayOfWeek,setDayOfWeek]=useState("Monday");
+  const[startDate,setStartDate]=useState("");
   const add=()=>{
     if(!label.trim()||!amount)return;
-    onAdd({id:"c"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:""});
-    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");
+    onAdd({id:"c"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:"",startDate:freq==="fortnightly"?startDate:""});
+    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");setStartDate("");
   };
   return(
     <div style={{marginBottom:4}}>
@@ -560,7 +592,11 @@ function CostForm({onAdd,theme}){
         <select className="pi" style={{flex:1,fontSize:11}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
           {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
         </select>
-        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
+      </div>}
+      {freq==="fortnightly"&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Starting from:</span>
+        <input className="pi" style={{flex:1,fontSize:11}} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/>
+        <span style={{fontSize:9,color:"#AAA"}}>sets which week</span>
       </div>}
       <button className="btn bp bsm" onClick={add}>+ Add</button>
     </div>
@@ -1294,8 +1330,9 @@ export default function App(){
       if(i.dayOfWeek&&i.freq==="weekly"&&dayName===i.dayOfWeek)
         evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
       if(i.dayOfWeek&&i.freq==="fortnightly"&&dayName===i.dayOfWeek){
-        const weeksSinceEpoch=Math.floor(d.getTime()/(7*86400000));
-        if(weeksSinceEpoch%2===0)evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label+" (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+        const ref=i.startDate?new Date(i.startDate+"T12:00:00"):new Date("2024-01-01T12:00:00");
+        const weeksDiff=Math.round((d.getTime()-ref.getTime())/(7*86400000));
+        if(weeksDiff>=0&&weeksDiff%2===0)evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label+" (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
       }
     });
     fixedCosts.forEach(c=>{
@@ -1304,8 +1341,9 @@ export default function App(){
       if(c.dayOfWeek&&c.freq==="weekly"&&dayName===c.dayOfWeek)
         evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
       if(c.dayOfWeek&&c.freq==="fortnightly"&&dayName===c.dayOfWeek){
-        const weeksSinceEpoch=Math.floor(d.getTime()/(7*86400000));
-        if(weeksSinceEpoch%2===0)evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+        const ref=c.startDate?new Date(c.startDate+"T12:00:00"):new Date("2024-01-01T12:00:00");
+        const weeksDiff=Math.round((d.getTime()-ref.getTime())/(7*86400000));
+        if(weeksDiff>=0&&weeksDiff%2===0)evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
       }
     });
     oneOffIncome.forEach(o=>{if(o.date===iso)evs.push({id:"ooi_"+o.id,title:"💵 "+o.label+" (one-off)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income_once",amount:+o.amount});});
@@ -1517,9 +1555,9 @@ export default function App(){
           {isToday&&dtp&&dtp<=7&&dtp>0&&<div style={{marginLeft:"auto",fontSize:9,fontWeight:700,color:ph.c}}>{"🌑 "+dtp+"d"}</div>}
         </div>}
         {allDay.map(ev=>(
-          <div key={ev.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 7px",borderRadius:7,background:(ev.finType?"#FFF4CC":lc(ev.loc)+"22"),borderLeft:"3px solid "+(ev.finType?"#FFD93D":lc(ev.loc)),marginBottom:3,cursor:ev.finType?"default":"pointer"}} onClick={()=>!ev.finType&&setDetailItem({item:ev,type:ev.cost?"financial":"event",iso})}>
-            <span style={{fontSize:10,fontWeight:700,color:ev.finType?"#F08C00":lc(ev.loc),flex:1}}>{ev.title+(ev.cost?" · €"+ev.cost.amount:"")}</span>
-            {!ev.finType&&<span style={{fontSize:9,color:"#BBB",fontWeight:600}}>›</span>}
+          <div key={ev.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 7px",borderRadius:7,background:(ev.finType?"#FFF4CC":lc(ev.loc)+"22"),borderLeft:"3px solid "+(ev.finType?"#FFD93D":lc(ev.loc)),marginBottom:3,cursor:"pointer"}} onClick={()=>setDetailItem({item:ev,type:ev.finType?"financial":ev.cost?"financial":"event",iso})}>
+            <span style={{fontSize:10,fontWeight:700,color:ev.finType?"#F08C00":lc(ev.loc),flex:1}}>{ev.title+(ev.cost?" · €"+ev.cost.amount:ev.amount?" · €"+ev.amount:"")}</span>
+            <span style={{fontSize:9,color:"#BBB",fontWeight:600}}>›</span>
           </div>
         ))}
         {timed.slice(0,slice).map(ev=>(
@@ -2020,12 +2058,29 @@ export default function App(){
           type={detailItem.type}
           onClose={()=>setDetailItem(null)}
           onDelete={()=>{
-            if(detailItem.type==="task")setTasks(ts=>ts.filter(t2=>t2.id!==detailItem.item.id));
-            else handleDeleteEv(detailItem.item,detailItem.iso);
+            const item=detailItem.item;
+            if(detailItem.type==="task")setTasks(ts=>ts.filter(t2=>t2.id!==item.id));
+            else if(item.finType==="income")setIncomes(p=>p.filter(x=>"inc_"+x.id!==item.id.split("_"+detailItem.iso)[0]&&"inc_"+x.id+"_"+detailItem.iso!==item.id));
+            else if(item.finType==="cost")setFixedCosts(p=>p.filter(x=>"cost_"+x.id+"_"+detailItem.iso!==item.id));
+            else if(item.finType==="income_once")setOneOffIncome(p=>p.filter(x=>"ooi_"+x.id!==item.id));
+            else handleDeleteEv(item,detailItem.iso);
           }}
           onEdit={(updated)=>{
-            if(detailItem.type==="task")setTasks(ts=>ts.map(t2=>t2.id===updated.id?updated:t2));
-            else setCalEvents(evs=>evs.map(ev=>ev.id===updated.id?updated:ev));
+            const item=detailItem.item;
+            if(detailItem.type==="task"){
+              setTasks(ts=>ts.map(t2=>t2.id===updated.id?updated:t2));
+            } else if(item.finType==="income"){
+              const srcId=item.id.replace("inc_","").split("_")[0];
+              setIncomes(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,dayOfMonth:updated.dayOfMonth||x.dayOfMonth,dayOfWeek:updated.dayOfWeek||x.dayOfWeek,startDate:updated.startDate||x.startDate}:x));
+            } else if(item.finType==="cost"){
+              const srcId=item.id.replace("cost_","").split("_")[0];
+              setFixedCosts(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,dayOfMonth:updated.dayOfMonth||x.dayOfMonth,dayOfWeek:updated.dayOfWeek||x.dayOfWeek,startDate:updated.startDate||x.startDate}:x));
+            } else if(item.finType==="income_once"){
+              const srcId=item.id.replace("ooi_","").split("_")[0];
+              setOneOffIncome(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,date:updated.date}:x));
+            } else {
+              setCalEvents(evs=>evs.map(ev=>ev.id===updated.id?updated:ev));
+            }
           }}
           locs={locs} lc={lc} le={le} theme={theme}
         />}
