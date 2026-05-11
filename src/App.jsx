@@ -411,6 +411,14 @@ function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
   const[evDate,setEvDate]=useState(item.date||item.deadline||"");
   const[startTime,setStartTime]=useState(item.startTime||"");
   const[endTime,setEndTime]=useState(item.endTime||"");
+  const handleStartEdit=(val)=>{
+    setStartTime(val);
+    if(!item.finType){
+      const[h,m]=val.split(":").map(Number);
+      const newH=(h+1)%24;
+      setEndTime(String(newH).padStart(2,"0")+":"+String(m).padStart(2,"0"));
+    }
+  };
   const[allDay,setAllDay]=useState(item.allDay||false);
   const[evLoc,setEvLoc]=useState(item.loc||item.lo||locs[0]||"Home");
   const[cost,setCost]=useState(item.cost?item.cost.amount:"");
@@ -925,7 +933,7 @@ function AddEventModal({onClose,onSave,locs,initialDate,lc,le,theme}){
           <button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/>
         </div>
         {!allDay&&<div style={{display:"flex",gap:7,marginBottom:7}}>
-          <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>handleStartEdit(e.target.value)}/></div>
           <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
         </div>}
         <div className="tog-row" style={{marginBottom:hasCost?6:7}}>
@@ -1683,21 +1691,16 @@ export default function App(){
 
     return(
       <>
-        {/* Mood/energy pills */}
-        <div style={{display:"flex",gap:7,marginBottom:9,flexWrap:"wrap"}}>
-          {mood&&<div style={{background:t.card,borderRadius:10,padding:"7px 10px",boxShadow:"0 2px 8px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:18}}>{mood.e}</span><div><div style={{fontSize:8,fontWeight:800,color:"#BBB",textTransform:"uppercase",letterSpacing:.5}}>Mood</div><div style={{fontSize:10,fontWeight:700,color:t.dark}}>{mood.l}</div></div></div>}
-          {energy&&<div style={{background:t.card,borderRadius:10,padding:"7px 10px",boxShadow:"0 2px 8px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:18}}>{energy.e}</span><div><div style={{fontSize:8,fontWeight:800,color:"#BBB",textTransform:"uppercase",letterSpacing:.5}}>Energy</div><div style={{fontSize:10,fontWeight:700,color:t.dark}}>{energy.l}</div></div></div>}
-          {wantCycle&&cPhase&&<div style={{background:cPhase.c+"18",borderRadius:10,padding:"7px 10px",display:"flex",alignItems:"center",gap:5,cursor:"pointer"}} onClick={()=>setTab("📆")}><span style={{fontSize:14}}>{cPhase.e}</span><div><div style={{fontSize:8,fontWeight:800,color:cPhase.c,textTransform:"uppercase",letterSpacing:.5}}>{"Day "+cDay}</div><div style={{fontSize:10,fontWeight:700,color:cPhase.c}}>{cPhase.l}</div></div></div>}
-        </div>
-
         {/* Tip */}
         {tip&&<div className="tip-card"><div className="tip-t">{tip.tip}</div><div className="tip-x">{tip.text}</div><div className="tip-s">{"— "+tip.source}</div></div>}
 
-        {/* Reward nudge */}
-        {nearestReward&&<div className="rn" onClick={()=>setTab("⚙️")}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}><div style={{fontFamily:"Fredoka One",fontSize:13,color:"#FF6B6B"}}>🏆 Almost there!</div><span style={{fontSize:9,color:"#FF6B6B",fontWeight:700}}>See all →</span></div>
-          <div style={{fontSize:10,fontWeight:600,color:"#444",marginBottom:5}}>{nearestReward.gap===1?"1 more to earn: "+nearestReward.rw+" 🎉":nearestReward.gap+" more: "+nearestReward.rw}</div>
-          <div className="sbar">{Array.from({length:Math.min(nearestReward.max,10)}).map((_,i)=><div key={i} className={"sd"+(i<nearestReward.cur?" on":"")}/>)}</div>
+        {/* Tour card */}
+        {tourSkipped&&!tourCardDismissed&&<div style={{background:"linear-gradient(135deg,"+t.h1+"18,"+t.h2+"18)",borderRadius:12,padding:11,marginBottom:9,border:"1.5px solid "+t.acc+"44"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+            <div style={{fontFamily:"Fredoka One",fontSize:13,color:t.acc}}>👋 Quick tour</div>
+            <button className="db" onClick={()=>setTourCardDismissed(true)}>×</button>
+          </div>
+          <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Start tour</button>
         </div>}
 
         {/* ADHD dreaded task nudge */}
@@ -1710,81 +1713,78 @@ export default function App(){
           <div className="brow"><button className="btn bp bsm" onClick={()=>{togT(dNudge.id);setNdDis(true);}}>Done! 🎉</button><button className="btn bs bsm" onClick={()=>setNdDis(true)}>Not today</button></div>
         </div>}
 
-        {/* TODAY CALENDAR */}
-        <div className="card" style={{border:"2px solid "+t.acc+"44"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-            <div className="ct" style={{marginBottom:0}}>📆 Today</div>
-            <div style={{display:"flex",gap:5}}>
-              <button className="btn bp bsm" onClick={()=>{setSelDay(todayISO());setShowAddEv(true);}}>+ Add</button>
-              <button className="btn bs bsm" onClick={()=>setTab("📆")}>More →</button>
-            </div>
-          </div>
-          <DayPanel iso={todayISO()} compact={true}/>
-        </div>
-
-        {/* Spinner */}
-        {pending.length>0&&<div className="card">
-          <div className="ct">🎡 Can't decide? Spin!</div>
-          <div className="ww">
-            <div className="wc"><div className="wp"/><canvas ref={cvRef} width="200" height="200" style={{borderRadius:"50%",boxShadow:"0 5px 20px rgba(0,0,0,.12)"}}/></div>
-            <button className="sb" onClick={doSpin} disabled={spinning}>{spinning?"Spinning...":"SPIN! 🎡"}</button>
-          </div>
-          {spRes&&<div className="sr">
-            <div style={{fontSize:22,marginBottom:4}}>🎯</div>
-            <div style={{fontFamily:"Fredoka One",fontSize:15,color:t.acc,marginBottom:2}}>Your task!</div>
-            <div style={{fontWeight:700,fontSize:12}}>{spRes.tl}</div>
-            <div className="tm" style={{justifyContent:"center",marginTop:4}}><span className="tg tglc" style={{background:lc(spRes.lo)}}>{le(spRes.lo)+spRes.lo}</span><span className="tg tgt">{"⏱ "+spRes.mn+"m"}</span></div>
-            <button className="btn bm" style={{marginTop:7}} onClick={()=>togT(spRes.id)}>Done ✓</button>
-          </div>}
-        </div>}
-
-        {/* Morning routine */}
+        {/* 1. ROUTINE — morning or evening based on time */}
         <div className="card">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
-            <div className="ct" style={{marginBottom:0}}>☀️ Morning Routine</div>
-            <span style={{fontSize:9,color:t.acc,fontWeight:700,cursor:"pointer"}} onClick={()=>{setTab("⚙️");setOpenSects(p=>({...p,me:true}));}}>{morningList.filter(i=>i.d).length+"/"+morningList.length+" · Edit →"}</span>
+            <div className="ct" style={{marginBottom:0}}>{greeting.isEve?"🌙 Evening Routine":"☀️ Morning Routine"}</div>
+            <span style={{fontSize:9,color:t.acc,fontWeight:700,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>{(greeting.isEve?eveningList:morningList).filter(i=>i.d).length+"/"+(greeting.isEve?eveningList:morningList).length+" · Edit →"}</span>
           </div>
-          <div className="pw"><div className="pb" style={{width:(mPct*100)+"%"}}/></div>
-          {morningList.map(i=>(
+          <div className="pw"><div className="pb" style={{width:((greeting.isEve?eveningList:morningList).filter(i=>i.d).length/Math.max((greeting.isEve?eveningList:morningList).length,1)*100)+"%"}}/></div>
+          {(greeting.isEve?eveningList:morningList).map(i=>(
             <div key={i.id} className="ci">
-              <div className={"cc"+(i.d?" on":"")} onClick={()=>setMorningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
+              <div className={"cc"+(i.d?" on":"")} onClick={()=>greeting.isEve?setEveningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x)):setMorningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
               <span className={"cl"+(i.d?" dn":"")}>{i.l}</span>
               <span className="mb2">{i.t}m</span>
             </div>
           ))}
         </div>
 
-        {/* Spending snapshot */}
-        {wantSpend&&finSetup&&<div className="card" style={{cursor:"pointer"}} onClick={()=>{setTab("⚙️");setOpenSects(p=>({...p,finance:true}));}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-            <div className="ct" style={{marginBottom:0}}>💰 Today</div>
-            <span style={{fontSize:9,color:t.acc,fontWeight:700}}>Budget →</span>
+        {/* 2. TODAY SCHEDULE — all events, no compact limit */}
+        <div className="card" style={{border:"2px solid "+t.acc+"44"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <div className="ct" style={{marginBottom:0}}>📆 Today's Schedule</div>
+            <button className="btn bp bsm" onClick={()=>{setSelDay(todayISO());setShowAddEv(true);}}>+ Add</button>
           </div>
-          {todaySpends.length>0?<>
-            <div style={{fontFamily:"Fredoka One",fontSize:24,color:t.acc}}>{"€"+todaySpent.toFixed(2)}</div>
-            <div style={{fontSize:9,color:"#AAA",fontWeight:600}}>{"€"+dailyBudget.toFixed(0)+" daily budget"}</div>
-            <div className="pw" style={{marginTop:4}}><div className="pb" style={{width:(Math.min(todaySpent/Math.max(dailyBudget,1),1)*100)+"%"}}/></div>
-          </>:<div style={{fontSize:10,color:"#AAA",fontWeight:600,padding:"3px 0"}}>Nothing logged yet today</div>}
-        </div>}
+          <DayPanel iso={todayISO()} compact={false}/>
+        </div>
 
-        {/* Finance nudge */}
-        {wantSpend&&!finSetup&&!finNudgeDismissed&&checkinDays>=3&&<div style={{background:"linear-gradient(135deg,#FFF4CC,#FFE5E5)",borderRadius:12,padding:11,marginBottom:9,border:"1.5px solid #FFD93D"}}>
-          <div style={{fontFamily:"Fredoka One",fontSize:13,color:"#FF6B6B",marginBottom:3}}>💰 Set up your budget</div>
-          <p style={{fontSize:11,fontWeight:600,color:"#444",marginBottom:7}}>Add your income and bills — takes 2 minutes and shows exactly what you have left to spend.</p>
-          <div className="brow">
-            <button className="btn bp bsm" onClick={()=>{setTab("⚙️");setOpenSects(p=>({...p,finance:true}));}}>Set up now</button>
-            <button className="btn bs bsm" onClick={()=>setFinNudgeDismissed(true)}>Maybe later</button>
+        {/* 3. MIDDLE ROW — spending left, cycle right */}
+        <div style={{display:"flex",gap:9,marginBottom:9}}>
+          {/* Spending panel */}
+          <div style={{flex:1}}>
+            {wantSpend&&finSetup?<div className="card" style={{marginBottom:0,cursor:"pointer",height:"100%"}} onClick={()=>setTab("⚙️")}>
+              <div className="ct" style={{fontSize:12,marginBottom:5}}>💰 Today</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:22,color:t.acc}}>{"€"+todaySpent.toFixed(0)}</div>
+              <div style={{fontSize:9,color:"#AAA",fontWeight:600,marginBottom:4}}>{"of €"+dailyBudget.toFixed(0)+"/day"}</div>
+              <div className="pw"><div className="pb" style={{width:(Math.min(todaySpent/Math.max(dailyBudget,1),1)*100)+"%"}}/></div>
+              {todaySpends.length>0&&<div style={{marginTop:5}}>{todaySpends.slice(0,2).map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",justifyContent:"space-between",fontSize:9,fontWeight:600,color:"#888",marginTop:2}}><span>{cat.e} {s.lb}</span><span>{"€"+s.am.toFixed(0)}</span></div>;})}</div>}
+            </div>:wantSpend&&!finNudgeDismissed?<div className="card" style={{marginBottom:0,border:"2px solid #FFD93D"}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:12,color:"#FF6B6B",marginBottom:3}}>💰 Budget</div>
+              <p style={{fontSize:10,fontWeight:600,color:"#444",marginBottom:6}}>Set up to track spending</p>
+              <button className="btn bp bsm" style={{fontSize:9}} onClick={()=>setTab("⚙️")}>Set up →</button>
+            </div>:<div style={{flex:1}}/>}
           </div>
-        </div>}
+          {/* Cycle + energy panel */}
+          <div style={{flex:1}}>
+            {wantCycle&&cPhase?<div className="card" style={{marginBottom:0,background:cPhase.c+"10",cursor:"pointer"}} onClick={()=>setTab("📆")}>
+              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
+                <span style={{fontSize:22}}>{cPhase.e}</span>
+                <div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cPhase.c}}>{cPhase.l}</div><div style={{fontSize:9,fontWeight:700,color:"#888"}}>{"Day "+cDay}</div></div>
+              </div>
+              <div style={{fontSize:9,fontWeight:800,color:cPhase.c,marginBottom:2}}>{cPhase.energy} energy</div>
+              <div style={{fontSize:9,fontWeight:600,color:"#555",lineHeight:1.4}}>{cPhase.tips[0]}</div>
+              {dtp&&dtp<=7&&dtp>0&&<div style={{fontSize:9,fontWeight:700,color:cPhase.c,marginTop:3}}>{"🌑 "+dtp+"d"}</div>}
+            </div>:energy?<div className="card" style={{marginBottom:0}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:12,color:t.dark,marginBottom:4}}>Today's energy</div>
+              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:22}}>{energy.e}</span><div style={{fontSize:13,fontWeight:700,color:t.dark}}>{energy.l}</div></div>
+              {mood&&<div style={{fontSize:9,fontWeight:600,color:"#888"}}>{mood.e} {mood.l}</div>}
+            </div>:<div style={{flex:1}}/>}
+          </div>
+        </div>
 
-        {/* Tour card */}
-        {tourSkipped&&!tourCardDismissed&&<div style={{background:"linear-gradient(135deg,"+t.h1+"18,"+t.h2+"18)",borderRadius:12,padding:11,marginBottom:9,border:"1.5px solid "+t.acc+"44"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-            <div style={{fontFamily:"Fredoka One",fontSize:13,color:t.acc}}>👋 Quick tour available</div>
-            <button className="db" onClick={()=>setTourCardDismissed(true)}>×</button>
+        {/* 4. REWARDS — clear and prominent */}
+        {nearestReward&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:13,padding:13,marginBottom:9,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:44,height:44,borderRadius:11,background:"rgba(255,255,255,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{nearestReward.ic}</div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",marginBottom:2}}>🏆 Next reward</div>
+              <div style={{fontSize:11,fontWeight:700,color:"white",marginBottom:4}}>{nearestReward.rw}</div>
+              <div style={{background:"rgba(255,255,255,.2)",borderRadius:6,height:7,overflow:"hidden"}}>
+                <div style={{height:"100%",borderRadius:6,background:"white",width:(Math.min(nearestReward.cur/Math.max(nearestReward.max,1),1)*100)+"%",transition:"width .4s"}}/>
+              </div>
+              <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.8)",marginTop:2}}>{nearestReward.gap===1?"1 more to earn it!":nearestReward.gap+" more to earn it"}</div>
+            </div>
           </div>
-          <p style={{fontSize:11,fontWeight:600,color:"#444",marginBottom:7}}>Take a 2-minute tour to see everything BrainBloom can do.</p>
-          <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Start tour</button>
         </div>}
 
         {/* Evening check-in */}
@@ -2023,7 +2023,7 @@ export default function App(){
             <div className="dbg">{todayStr}</div>
           </div>
           {csDone&&mood&&<div className="pills">
-            <span className="pill" style={{cursor:"pointer"}} onClick={()=>{setTab("🏠");setShowCheckinEdit(true);}}>{mood.e+" "+mood.l} ✏️</span>
+            <span className="pill" style={{cursor:"pointer",userSelect:"none"}} onClick={()=>setShowCheckinEdit(true)}>{mood.e+" "+mood.l} ✏️</span>
             {energy&&<span className="pill">{energy.e+" "+energy.l}</span>}
             {wantCycle&&cPhase&&<span className="pill">{cPhase.e+" Day "+cDay}</span>}
           </div>}
@@ -2102,7 +2102,7 @@ export default function App(){
               const srcId=item.id.replace("ooi_","").split("_")[0];
               setOneOffIncome(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,date:updated.date}:x));
             } else {
-              setCalEvents(evs=>evs.map(ev=>ev.id===updated.id?updated:ev));
+              setCalEvents(evs=>[...evs.map(ev=>ev.id===updated.id?{...ev,...updated}:ev)]);
             }
           }}
           locs={locs} lc={lc} le={le} theme={theme}
