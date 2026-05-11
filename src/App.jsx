@@ -368,7 +368,7 @@ function PWAIntro({onDone}){
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#FF6B6B 0%,#FFD93D 50%,#6BCB77 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:"white",borderRadius:24,padding:"28px 22px",width:"100%",maxWidth:390,boxShadow:"0 20px 60px rgba(0,0,0,.18)",textAlign:"center"}}>
         <div style={{fontSize:52,marginBottom:10}}>🧠</div>
-        <div style={{fontFamily:"Fredoka One",cursive,fontSize:26,color:"#2D2D2D",marginBottom:6}}>BrainBloom</div>
+        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#2D2D2D",marginBottom:6}}>BrainBloom</div>
         <div style={{fontSize:13,fontWeight:700,color:"#888",marginBottom:20,lineHeight:1.5}}>Your personal planner that works with you.</div>
         <div style={{background:"linear-gradient(135deg,#FFF4CC,#FFE5E5)",borderRadius:14,padding:"14px 16px",marginBottom:18,textAlign:"left"}}>
           <div style={{fontFamily:"Fredoka One",fontSize:14,color:"#FF6B6B",marginBottom:8}}>📱 Save to your home screen first</div>
@@ -390,7 +390,7 @@ function PWAIntro({onDone}){
             </div>
           </div>}
         </div>
-        <button onClick={onDone} style={{width:"100%",padding:14,background:"linear-gradient(135deg,#FF6B6B,#FFD93D)",color:"white",border:"none",borderRadius:13,fontFamily:"Fredoka One",cursive,fontSize:16,cursor:"pointer",marginBottom:8,boxShadow:"0 4px 14px rgba(255,107,107,.4)"}}>
+        <button onClick={onDone} style={{width:"100%",padding:14,background:"linear-gradient(135deg,#FF6B6B,#FFD93D)",color:"white",border:"none",borderRadius:13,fontFamily:"'Fredoka One',cursive",fontSize:16,cursor:"pointer",marginBottom:8,boxShadow:"0 4px 14px rgba(255,107,107,.4)"}}>
           ✓ I have saved it — let's go!
         </button>
         <button onClick={onDone} style={{width:"100%",padding:9,background:"none",border:"none",fontFamily:"Nunito",fontWeight:700,fontSize:12,color:"#BBB",cursor:"pointer"}}>
