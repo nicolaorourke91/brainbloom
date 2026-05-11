@@ -956,6 +956,193 @@ function TourOverlay({onDone,onSkip,theme}){
   );
 }
 
+
+function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,setLocs,
+  wantCycle,setWantCycle,wantSpend,setWantSpend,wantADHD,setWantADHD,
+  morningList,setMorningList,eveningList,setEveningList,
+  incomes,setIncomes,fixedCosts,setFixedCosts,oneOffIncome,setOneOffIncome,
+  spends,setSpends,finSetup,setFinSetup,lps,setLps,cLen,setCLen,cDay,cPhase,
+  rewards,setRewards,mStreak,eStreak,mdStreak,tasks,
+  hasCommute,setHasCommute,commuteMins,setCommuteMins,commuteEveMins,setCommuteEveMins,
+  taskFrom,setTaskFrom,taskTo,setTaskTo,spotifyUrl,setSpotifyUrl,
+  calStartMon,setCalStartMon,tourDone,tourSkipped,setShowTour,setOnboarded,
+  newLoc2,setNewLoc2,getRP,lc,le}){
+  const[settingsSearch,setSettingsSearch]=useState("");
+  const[openSects,setOpenSects]=useState({me:false,finance:false,cycle:false,rewards:false,app:false});
+  const[nSAm,setNSAm]=useState("");
+  const[nSLb,setNSLb]=useState("");
+  const[nSCa,setNSCa]=useState("other");
+  const[nRew,setNRew]=useState("");
+  const[nRewT,setNRewT]=useState("");
+  const[nRewI,setNRewI]=useState("🎁");
+  const t=THEMES[theme]||THEMES.bloom;
+  const totalIncome=incomes.reduce((a,i)=>a+toMonthly(i.amount,i.freq),0)+oneOffIncome.reduce((a,i)=>a+(+i.amount||0),0)/12;
+  const totalFixed=fixedCosts.reduce((a,c)=>a+toMonthly(c.amount,c.freq),0);
+  const discretionary=Math.max(0,totalIncome-totalFixed);
+  const dailyBudget=discretionary/30;
+  const msSpends=spends.filter(s=>{const d=new Date(s.dt),n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();});
+  const monthSpent=msSpends.reduce((a,s)=>a+s.am,0);
+  const upcomingComm=0;
+  const available=Math.max(0,discretionary-monthSpent-upcomingComm);
+
+  const searchQ=settingsSearch.toLowerCase().trim();
+  const matches=(section)=>{
+    if(!searchQ)return true;
+    const entry=SEARCH_INDEX.find(e=>e.section===section);
+    return entry&&entry.terms.some(term=>term.includes(searchQ)||searchQ.includes(term.substring(0,3)));
+  };
+  const Sect=({id,icon,title,children})=>{
+    if(!matches(id))return null;
+    const isOpen=openSects[id];
+    return(
+      <div className="sect" style={searchQ&&matches(id)?{border:"2px solid "+t.acc+"44"}:{}}>
+        <div className="sect-hdr" onClick={()=>setOpenSects(p=>({...p,[id]:!p[id]}))}>
+          <div className="sect-title">{icon+" "+title}</div>
+          <span style={{fontSize:16,color:"#BBB",display:"inline-block",transition:"transform .2s",transform:isOpen?"rotate(180deg)":"none"}}>▾</span>
+        </div>
+        {isOpen&&<div className="sect-body">{children}</div>}
+      </div>
+    );
+  };
+
+  return(
+    <>
+      <div className="search-wrap">
+        <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#BBB",pointerEvents:"none"}}>🔍</span>
+        <input className="search-in" placeholder="Search settings... e.g. budget, theme, cycle" value={settingsSearch} onChange={e=>{
+          const q=e.target.value;setSettingsSearch(q);
+          if(q.trim()){
+            const qL=q.toLowerCase();
+            const found=SEARCH_INDEX.find(entry=>entry.terms.some(term=>term.includes(qL)||qL.includes(term.substring(0,3))));
+            if(found)setOpenSects(p=>({...p,[found.section]:true}));
+          }
+        }}/>
+      </div>
+
+      {(tourDone||tourSkipped)&&<div style={{background:t.bg,borderRadius:9,padding:"8px 12px",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"space-between",border:"1.5px solid #EEE"}}>
+        <div style={{fontSize:11,fontWeight:700,color:t.dark}}>👋 App tour</div>
+        <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Watch tour</button>
+      </div>}
+
+      <Sect id="me" icon="👤" title="Me">
+        <div className="pf" style={{marginTop:4}}><label>Name</label><input className="pi" value={profName} onChange={e=>setProfName(e.target.value)}/></div>
+        <div className="pf"><label>What you do</label><input className="pi" value={role} onChange={e=>setRole(e.target.value)}/></div>
+        <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"9px 0 5px"}}>Locations</div>
+        <div style={{display:"flex",flexWrap:"wrap",marginBottom:7}}>{locs.map((l,i)=><span key={i} className="ptg">{le(l)}{l}<span style={{cursor:"pointer",marginLeft:2,color:"#CCC"}} onClick={()=>setLocs(locs.filter((_,j)=>j!==i))}>×</span></span>)}</div>
+        <div style={{display:"flex",gap:4,marginBottom:9}}><input className="pi" placeholder="Add location..." value={newLoc2} onChange={e=>setNewLoc2(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newLoc2.trim()){setLocs([...locs,newLoc2.trim()]);setNewLoc2("");}}}/><button className="btn bpu bsm" onClick={()=>{if(newLoc2.trim()){setLocs([...locs,newLoc2.trim()]);setNewLoc2("");}}}>+</button></div>
+        <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"0 0 5px"}}>Morning Routine</div>
+        {morningList.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div><button className="db" onClick={()=>setMorningList(l=>l.filter(x=>x.id!==i.id))}>×</button></div>)}
+        <div style={{display:"flex",gap:4,margin:"4px 0 9px"}}><input id="nm" className="pi" style={{fontSize:11}} placeholder="Add morning step..."/><button className="btn bp bsm" onClick={()=>{const el=document.getElementById("nm");if(!el||!el.value.trim())return;setMorningList(l=>[...l,{id:"m"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button></div>
+        <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"0 0 5px"}}>Evening Routine</div>
+        {eveningList.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div><button className="db" onClick={()=>setEveningList(l=>l.filter(x=>x.id!==i.id))}>×</button></div>)}
+        <div style={{display:"flex",gap:4,margin:"4px 0 0"}}><input id="ne" className="pi" style={{fontSize:11}} placeholder="Add evening step..."/><button className="btn bp bsm" onClick={()=>{const el=document.getElementById("ne");if(!el||!el.value.trim())return;setEveningList(l=>[...l,{id:"e"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button></div>
+        <div className="tog-row" style={{marginTop:7}}><div><div className="tog-lbl">🚗 I commute</div><div className="tog-sub">Blocks travel time from suggestions</div></div><button className={"tog"+(hasCommute?" on":"")} onClick={()=>setHasCommute(s=>!s)}/></div>
+        {hasCommute&&<div style={{display:"flex",gap:7,marginTop:7}}>
+          <div style={{flex:1}}><div className="pf"><label>Morning (mins)</label><input className="pi" type="number" min="5" max="180" value={commuteMins} onChange={e=>setCommuteMins(+e.target.value)}/></div></div>
+          <div style={{flex:1}}><div className="pf"><label>Evening (mins)</label><input className="pi" type="number" min="5" max="180" value={commuteEveMins} onChange={e=>setCommuteEveMins(+e.target.value)}/></div></div>
+        </div>}
+      </Sect>
+
+      <Sect id="finance" icon="💰" title="Finance">
+        <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable spending tracker</div></div><button className={"tog"+(wantSpend?" on":"")} onClick={()=>setWantSpend(s=>!s)}/></div>
+        {wantSpend&&<>
+          {finSetup&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:11,padding:12,marginTop:9,marginBottom:9,color:"white"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+              <div><div style={{fontSize:9,fontWeight:700,opacity:.8}}>Monthly income</div><div style={{fontFamily:"Fredoka One",fontSize:18}}>{"€"+totalIncome.toFixed(0)}</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:9,fontWeight:700,opacity:.8}}>Fixed costs</div><div style={{fontFamily:"Fredoka One",fontSize:18}}>{"€"+totalFixed.toFixed(0)}</div></div>
+            </div>
+            <div style={{background:"rgba(255,255,255,.2)",borderRadius:7,padding:"8px 10px"}}>
+              <div style={{fontSize:9,fontWeight:800,opacity:.8,marginBottom:1}}>DISCRETIONARY</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:22}}>{"€"+discretionary.toFixed(0)}<span style={{fontSize:10,marginLeft:3}}>/month</span></div>
+              <div style={{fontSize:9,fontWeight:600,opacity:.9}}>{"€"+dailyBudget.toFixed(0)+"/day · Spent: €"+monthSpent.toFixed(0)+" · Committed: €"+upcomingComm.toFixed(0)}</div>
+              <div style={{background:"rgba(255,255,255,.2)",borderRadius:5,height:5,overflow:"hidden",marginTop:5}}><div style={{height:"100%",borderRadius:5,background:"white",width:Math.min((monthSpent+upcomingComm)/Math.max(discretionary,1),1)*100+"%"}}/></div>
+              <div style={{fontSize:10,fontWeight:700,marginTop:4}}>{"Available: €"+available.toFixed(0)}</div>
+            </div>
+          </div>}
+          {!finSetup&&<div style={{marginTop:9}}><button className="nb" style={{marginTop:0}} onClick={()=>setFinSetup(true)}>Set up my budget →</button></div>}
+          {finSetup&&<>
+            <div className="sl">Regular income</div>
+            {incomes.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+" · "+i.freq+(i.dayOfMonth?" · paid day "+i.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setIncomes(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
+            <IncomeForm key="income-form" onAdd={i=>setIncomes(p=>[...p,i])} theme={theme}/>
+            <div className="sl">One-off income <span style={{fontSize:9,color:"#AAA"}}>(tax refund, bonus, etc)</span></div>
+            {oneOffIncome.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+(i.date?" · "+i.date:"")}</div></div><button className="db" onClick={()=>setOneOffIncome(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
+            <OOIForm key="ooi-form" onAdd={i=>setOneOffIncome(p=>[...p,i])}/>
+            <div className="sl">Fixed costs</div>
+            {fixedCosts.map(c=><div key={c.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{c.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+c.amount+" · "+c.freq+(c.dayOfMonth?" · due day "+c.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setFixedCosts(p=>p.filter(x=>x.id!==c.id))}>×</button></div>)}
+            <CostForm key="cost-form" onAdd={c=>setFixedCosts(p=>[...p,c])} theme={theme}/>
+            <div className="sl">Log a spend</div>
+            <div style={{display:"flex",gap:5,marginBottom:5}}>
+              <input className="ai" type="number" placeholder="€" value={nSAm} onChange={e=>setNSAm(e.target.value)} style={{width:65,flex:"none"}}/>
+              <input className="ai" placeholder="What was it?" value={nSLb} onChange={e=>setNSLb(e.target.value)}/>
+            </div>
+            <div className="fr">{SCATS.map(c=><button key={c.id} className={"fc"+(nSCa===c.id?" on":"")} style={nSCa===c.id?{background:c.c,borderColor:c.c}:{}} onClick={()=>setNSCa(c.id)}>{c.e+" "+c.l}</button>)}</div>
+            <button className="btn bp bsm" onClick={()=>{if(!nSAm||isNaN(nSAm))return;setSpends(ss=>[{id:"s"+Date.now(),am:+nSAm,ca:nSCa,lb:nSLb||(SCATS.find(c=>c.id===nSCa)||SCATS[SCATS.length-1]).l,dt:new Date().toISOString()},...ss]);setNSAm("");setNSLb("");}}>Log 💳</button>
+            {spends.length>0&&<><div className="sl">Recent spends</div>{spends.slice(0,5).map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",alignItems:"center",gap:7,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{fontSize:15,width:22}}>{cat.e}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:10}}>{s.lb}</div><div style={{fontSize:9,color:"#AAA"}}>{new Date(s.dt).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div></div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cat.c}}>{"€"+s.am.toFixed(2)}</div></div>;})}
+            </>}
+          </>}
+        </>}
+      </Sect>
+
+      <Sect id="cycle" icon="🌙" title="Cycle Tracking">
+        <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable cycle tracking</div></div><button className={"tog"+(wantCycle?" on":"")} onClick={()=>setWantCycle(s=>!s)}/></div>
+        {wantCycle&&<>
+          <div className="pf" style={{marginTop:9}}><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
+          <div className="pf"><label>Cycle length (days)</label><input className="pi" type="number" min="21" max="45" value={cLen} onChange={e=>setCLen(+e.target.value)}/></div>
+          {cDay&&cPhase&&<div style={{background:cPhase.c+"18",borderRadius:9,padding:"8px 10px",marginTop:5,display:"flex",alignItems:"center",gap:7}}>
+            <span style={{fontSize:18}}>{cPhase.e}</span>
+            <div><div style={{fontSize:11,fontWeight:800,color:cPhase.c}}>{cPhase.l+" Phase — Day "+cDay}</div><div style={{fontSize:9,fontWeight:600,color:"#666"}}>{cPhase.energy+" energy"}</div></div>
+          </div>}
+        </>}
+      </Sect>
+
+      <Sect id="rewards" icon="🏆" title="Rewards">
+        <div style={{display:"flex",gap:9,flexWrap:"wrap",marginBottom:9,marginTop:4}}>
+          {[["☀️",mStreak,"Morning"],["🌙",eStreak,"Evening"],["✅",tasks.filter(t2=>t2.dn).length,"Tasks"],["😊",mdStreak,"Mood"]].map(([l,v,label])=>(
+            <div key={l} style={{textAlign:"center"}}><div style={{fontFamily:"Fredoka One",fontSize:18,color:t.acc}}>{v}</div><div style={{fontSize:9,fontWeight:700,color:"#AAA"}}>{l+" "+label}</div></div>
+          ))}
+        </div>
+        {rewards.map(r=>{
+          const{cur,max}=getRP(r);const earned=max>0?cur>=max:false;
+          return(
+            <div key={r.id} className="rc" style={{border:earned?"2px solid #FFD93D":"none"}}>
+              <div className="ri">{r.ic}</div>
+              <div style={{flex:1}}><div style={{fontWeight:800,fontSize:11,color:t.dark}}>{r.rw}</div><div style={{fontSize:9,color:"#AAA",marginTop:1}}>{"🎯 "+r.tr}</div>
+                {earned&&<div className="re">🎉 Earned!</div>}
+                {max>0&&!earned&&<div className="sbar">{Array.from({length:Math.min(max,10)}).map((_,i)=><div key={i} className={"sd"+(i<cur?" on":"")}/>)}</div>}
+              </div>
+              <button className="db" onClick={()=>setRewards(p=>p.filter(x=>x.id!==r.id))}>×</button>
+            </div>
+          );
+        })}
+        <div className="sl">Add reward</div>
+        <div style={{display:"flex",gap:4,marginBottom:4}}><input className="pi" style={{width:42,textAlign:"center",fontSize:16}} placeholder="🎁" value={nRewI} onChange={e=>setNRewI(e.target.value)} maxLength={2}/><input className="pi" placeholder="Your reward..." value={nRew} onChange={e=>setNRew(e.target.value)}/></div>
+        <input className="pi" style={{marginBottom:5}} placeholder="When do you earn it?" value={nRewT} onChange={e=>setNRewT(e.target.value)}/>
+        <button className="btn bp bsm" onClick={()=>{if(!nRew.trim()||!nRewT.trim())return;setRewards(r=>[...r,{id:"rc"+Date.now(),tr:nRewT,rw:nRew,ic:nRewI,sk:0,ty:"custom"}]);setNRew("");setNRewT("");setNRewI("🎁");}}>Add 🏆</button>
+      </Sect>
+
+      <Sect id="app" icon="🎨" title="App Settings">
+        <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"4px 0 6px"}}>Theme</div>
+        <div className="th-grid">{Object.entries(THEMES).map(([key,th2])=><button key={key} className={"th-btn"+(theme===key?" on":"")} style={{background:"linear-gradient(135deg,"+th2.h1+","+th2.h2+")",color:"white"}} onClick={()=>setTheme(key)}>{th2.name}</button>)}</div>
+        <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD features</div><div className="tog-sub">Aversion ratings, ADHD-specific tips, dreaded task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
+        <div className="tog-row"><div><div className="tog-lbl">📅 Start week on Monday</div></div><button className={"tog"+(calStartMon?" on":"")} onClick={()=>setCalStartMon(s=>!s)}/></div>
+        <div style={{marginTop:9,display:"flex",gap:7}}>
+          <div style={{flex:1}}><div className="pf"><label>Suggest tasks from</label><input className="pi" type="time" value={taskFrom} onChange={e=>setTaskFrom(e.target.value)}/></div></div>
+          <div style={{flex:1}}><div className="pf"><label>Suggest tasks until</label><input className="pi" type="time" value={taskTo} onChange={e=>setTaskTo(e.target.value)}/></div></div>
+        </div>
+        <div className="pf"><label>Spotify playlist URL</label><input className="pi" placeholder="https://open.spotify.com/playlist/..." value={spotifyUrl} onChange={e=>setSpotifyUrl(e.target.value)}/></div>
+        <div style={{marginTop:9}}><button className="btn bs" style={{width:"100%",fontSize:11}} onClick={()=>{if(window.confirm("Redo setup wizard? Your data will be kept."))setOnboarded(false);}}>Redo Setup Wizard</button></div>
+      </Sect>
+
+      <div className="card" style={{textAlign:"center",background:"linear-gradient(135deg,"+t.h1+"12,"+t.h2+"12)",marginTop:4}}>
+        <div style={{fontSize:30,marginBottom:4}}>🧠</div>
+        <div style={{fontFamily:"Fredoka One",fontSize:15,color:t.dark}}>BrainBloom</div>
+        <p style={{fontSize:9,color:"#AAA",fontWeight:600,marginTop:2}}>Your personal planner. Built with 💙</p>
+      </div>
+    </>
+  );
+
+}
+
 export default function App(){
   // ── Persisted ──
   const[pwaIntroDone,setPwaIntroDone]=useLS("bb_pwaintro",false);
@@ -1026,8 +1213,6 @@ export default function App(){
   const[showFocus,setShowFocus]=useState(false);
   const[fabOpen,setFabOpen]=useState(false);
   const[showTour,setShowTour]=useState(false);
-  const[settingsSearch,setSettingsSearch]=useState("");
-  const[openSects,setOpenSects]=useState({me:false,finance:false,cycle:false,rewards:false,app:false});
   const[newT,setNewT]=useState("");
   const[nLoc,setNLoc]=useState("");
   const[nPri,setNPri]=useState("medium");
@@ -1043,13 +1228,7 @@ export default function App(){
   const[newInc,setNewInc]=useState({label:"",amount:"",freq:"monthly",dayOfMonth:""});
   const[newCost,setNewCost]=useState({label:"",amount:"",freq:"monthly",dayOfMonth:""});
   const[newOOI,setNewOOI]=useState({label:"",amount:"",date:""});
-  const[nSAm,setNSAm]=useState("");
-  const[nSLb,setNSLb]=useState("");
-  const[nSCa,setNSCa]=useState("other");
   const[newLoc2,setNewLoc2]=useState("");
-  const[nRew,setNRew]=useState("");
-  const[nRewT,setNRewT]=useState("");
-  const[nRewI,setNRewI]=useState("🎁");
   const[ndDis,setNdDis]=useState(false);
 
   const fabRef=useRef(null);
@@ -1744,167 +1923,48 @@ export default function App(){
   };
 
   // ══ SETTINGS ══
-  const rSettings=()=>{
-    const searchQ=settingsSearch.toLowerCase().trim();
-    const matches=(section)=>{
-      if(!searchQ)return true;
-      const entry=SEARCH_INDEX.find(e=>e.section===section);
-      return entry&&entry.terms.some(term=>term.includes(searchQ)||searchQ.includes(term.substring(0,3)));
-    };
-    const Sect=({id,icon,title,children})=>{
-      if(!matches(id))return null;
-      const isOpen=openSects[id];
-      return(
-        <div className="sect" style={searchQ&&matches(id)?{border:"2px solid "+t.acc+"44"}:{}}>
-          <div className="sect-hdr" onClick={()=>setOpenSects(p=>({...p,[id]:!p[id]}))}>
-            <div className="sect-title">{icon+" "+title}</div>
-            <span style={{fontSize:16,color:"#BBB",display:"inline-block",transition:"transform .2s",transform:isOpen?"rotate(180deg)":"none"}}>▾</span>
-          </div>
-          {isOpen&&<div className="sect-body">{children}</div>}
-        </div>
-      );
-    };
-
-    return(
-      <>
-        <div className="search-wrap">
-          <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#BBB",pointerEvents:"none"}}>🔍</span>
-          <input className="search-in" placeholder="Search settings... e.g. budget, theme, cycle" value={settingsSearch} onChange={e=>{
-            const q=e.target.value;setSettingsSearch(q);
-            if(q.trim()){
-              const qL=q.toLowerCase();
-              const found=SEARCH_INDEX.find(entry=>entry.terms.some(term=>term.includes(qL)||qL.includes(term.substring(0,3))));
-              if(found)setOpenSects(p=>({...p,[found.section]:true}));
-            }
-          }}/>
-        </div>
-
-        {(tourDone||tourSkipped)&&<div style={{background:t.bg,borderRadius:9,padding:"8px 12px",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"space-between",border:"1.5px solid #EEE"}}>
-          <div style={{fontSize:11,fontWeight:700,color:t.dark}}>👋 App tour</div>
-          <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Watch tour</button>
-        </div>}
-
-        <Sect id="me" icon="👤" title="Me">
-          <div className="pf" style={{marginTop:4}}><label>Name</label><input className="pi" value={profName} onChange={e=>setProfName(e.target.value)}/></div>
-          <div className="pf"><label>What you do</label><input className="pi" value={role} onChange={e=>setRole(e.target.value)}/></div>
-          <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"9px 0 5px"}}>Locations</div>
-          <div style={{display:"flex",flexWrap:"wrap",marginBottom:7}}>{locs.map((l,i)=><span key={i} className="ptg">{le(l)}{l}<span style={{cursor:"pointer",marginLeft:2,color:"#CCC"}} onClick={()=>setLocs(locs.filter((_,j)=>j!==i))}>×</span></span>)}</div>
-          <div style={{display:"flex",gap:4,marginBottom:9}}><input className="pi" placeholder="Add location..." value={newLoc2} onChange={e=>setNewLoc2(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newLoc2.trim()){setLocs([...locs,newLoc2.trim()]);setNewLoc2("");}}}/><button className="btn bpu bsm" onClick={()=>{if(newLoc2.trim()){setLocs([...locs,newLoc2.trim()]);setNewLoc2("");}}}>+</button></div>
-          <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"0 0 5px"}}>Morning Routine</div>
-          {morningList.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div><button className="db" onClick={()=>setMorningList(l=>l.filter(x=>x.id!==i.id))}>×</button></div>)}
-          <div style={{display:"flex",gap:4,margin:"4px 0 9px"}}><input id="nm" className="pi" style={{fontSize:11}} placeholder="Add morning step..."/><button className="btn bp bsm" onClick={()=>{const el=document.getElementById("nm");if(!el||!el.value.trim())return;setMorningList(l=>[...l,{id:"m"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button></div>
-          <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"0 0 5px"}}>Evening Routine</div>
-          {eveningList.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div><button className="db" onClick={()=>setEveningList(l=>l.filter(x=>x.id!==i.id))}>×</button></div>)}
-          <div style={{display:"flex",gap:4,margin:"4px 0 0"}}><input id="ne" className="pi" style={{fontSize:11}} placeholder="Add evening step..."/><button className="btn bp bsm" onClick={()=>{const el=document.getElementById("ne");if(!el||!el.value.trim())return;setEveningList(l=>[...l,{id:"e"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button></div>
-          <div className="tog-row" style={{marginTop:7}}><div><div className="tog-lbl">🚗 I commute</div><div className="tog-sub">Blocks travel time from suggestions</div></div><button className={"tog"+(hasCommute?" on":"")} onClick={()=>setHasCommute(s=>!s)}/></div>
-          {hasCommute&&<div style={{display:"flex",gap:7,marginTop:7}}>
-            <div style={{flex:1}}><div className="pf"><label>Morning (mins)</label><input className="pi" type="number" min="5" max="180" value={commuteMins} onChange={e=>setCommuteMins(+e.target.value)}/></div></div>
-            <div style={{flex:1}}><div className="pf"><label>Evening (mins)</label><input className="pi" type="number" min="5" max="180" value={commuteEveMins} onChange={e=>setCommuteEveMins(+e.target.value)}/></div></div>
-          </div>}
-        </Sect>
-
-        <Sect id="finance" icon="💰" title="Finance">
-          <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable spending tracker</div></div><button className={"tog"+(wantSpend?" on":"")} onClick={()=>setWantSpend(s=>!s)}/></div>
-          {wantSpend&&<>
-            {finSetup&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:11,padding:12,marginTop:9,marginBottom:9,color:"white"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                <div><div style={{fontSize:9,fontWeight:700,opacity:.8}}>Monthly income</div><div style={{fontFamily:"Fredoka One",fontSize:18}}>{"€"+totalIncome.toFixed(0)}</div></div>
-                <div style={{textAlign:"right"}}><div style={{fontSize:9,fontWeight:700,opacity:.8}}>Fixed costs</div><div style={{fontFamily:"Fredoka One",fontSize:18}}>{"€"+totalFixed.toFixed(0)}</div></div>
-              </div>
-              <div style={{background:"rgba(255,255,255,.2)",borderRadius:7,padding:"8px 10px"}}>
-                <div style={{fontSize:9,fontWeight:800,opacity:.8,marginBottom:1}}>DISCRETIONARY</div>
-                <div style={{fontFamily:"Fredoka One",fontSize:22}}>{"€"+discretionary.toFixed(0)}<span style={{fontSize:10,marginLeft:3}}>/month</span></div>
-                <div style={{fontSize:9,fontWeight:600,opacity:.9}}>{"€"+dailyBudget.toFixed(0)+"/day · Spent: €"+monthSpent.toFixed(0)+" · Committed: €"+upcomingComm.toFixed(0)}</div>
-                <div style={{background:"rgba(255,255,255,.2)",borderRadius:5,height:5,overflow:"hidden",marginTop:5}}><div style={{height:"100%",borderRadius:5,background:"white",width:Math.min((monthSpent+upcomingComm)/Math.max(discretionary,1),1)*100+"%"}}/></div>
-                <div style={{fontSize:10,fontWeight:700,marginTop:4}}>{"Available: €"+available.toFixed(0)}</div>
-              </div>
-            </div>}
-            {!finSetup&&<div style={{marginTop:9}}><button className="nb" style={{marginTop:0}} onClick={()=>setFinSetup(true)}>Set up my budget →</button></div>}
-            {finSetup&&<>
-              <div className="sl">Regular income</div>
-              {incomes.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+" · "+i.freq+(i.dayOfMonth?" · paid day "+i.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setIncomes(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
-              <IncomeForm onAdd={i=>setIncomes(p=>[...p,i])} theme={theme}/>
-              <div className="sl">One-off income <span style={{fontSize:9,color:"#AAA"}}>(tax refund, bonus, etc)</span></div>
-              {oneOffIncome.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+(i.date?" · "+i.date:"")}</div></div><button className="db" onClick={()=>setOneOffIncome(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
-              <OOIForm onAdd={i=>setOneOffIncome(p=>[...p,i])}/>
-              <div className="sl">Fixed costs</div>
-              {fixedCosts.map(c=><div key={c.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{c.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+c.amount+" · "+c.freq+(c.dayOfMonth?" · due day "+c.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setFixedCosts(p=>p.filter(x=>x.id!==c.id))}>×</button></div>)}
-              <CostForm onAdd={c=>setFixedCosts(p=>[...p,c])} theme={theme}/>
-              <div className="sl">Log a spend</div>
-              <div style={{display:"flex",gap:5,marginBottom:5}}>
-                <input className="ai" type="number" placeholder="€" value={nSAm} onChange={e=>setNSAm(e.target.value)} style={{width:65,flex:"none"}}/>
-                <input className="ai" placeholder="What was it?" value={nSLb} onChange={e=>setNSLb(e.target.value)}/>
-              </div>
-              <div className="fr">{SCATS.map(c=><button key={c.id} className={"fc"+(nSCa===c.id?" on":"")} style={nSCa===c.id?{background:c.c,borderColor:c.c}:{}} onClick={()=>setNSCa(c.id)}>{c.e+" "+c.l}</button>)}</div>
-              <button className="btn bp bsm" onClick={()=>{if(!nSAm||isNaN(nSAm))return;setSpends(ss=>[{id:"s"+Date.now(),am:+nSAm,ca:nSCa,lb:nSLb||(SCATS.find(c=>c.id===nSCa)||SCATS[SCATS.length-1]).l,dt:new Date().toISOString()},...ss]);setNSAm("");setNSLb("");}}>Log 💳</button>
-              {spends.length>0&&<><div className="sl">Recent spends</div>{spends.slice(0,5).map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",alignItems:"center",gap:7,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{fontSize:15,width:22}}>{cat.e}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:10}}>{s.lb}</div><div style={{fontSize:9,color:"#AAA"}}>{new Date(s.dt).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div></div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cat.c}}>{"€"+s.am.toFixed(2)}</div></div>;})}
-              </>}
-            </>}
-          </>}
-        </Sect>
-
-        <Sect id="cycle" icon="🌙" title="Cycle Tracking">
-          <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable cycle tracking</div></div><button className={"tog"+(wantCycle?" on":"")} onClick={()=>setWantCycle(s=>!s)}/></div>
-          {wantCycle&&<>
-            <div className="pf" style={{marginTop:9}}><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
-            <div className="pf"><label>Cycle length (days)</label><input className="pi" type="number" min="21" max="45" value={cLen} onChange={e=>setCLen(+e.target.value)}/></div>
-            {cDay&&cPhase&&<div style={{background:cPhase.c+"18",borderRadius:9,padding:"8px 10px",marginTop:5,display:"flex",alignItems:"center",gap:7}}>
-              <span style={{fontSize:18}}>{cPhase.e}</span>
-              <div><div style={{fontSize:11,fontWeight:800,color:cPhase.c}}>{cPhase.l+" Phase — Day "+cDay}</div><div style={{fontSize:9,fontWeight:600,color:"#666"}}>{cPhase.energy+" energy"}</div></div>
-            </div>}
-          </>}
-        </Sect>
-
-        <Sect id="rewards" icon="🏆" title="Rewards">
-          <div style={{display:"flex",gap:9,flexWrap:"wrap",marginBottom:9,marginTop:4}}>
-            {[["☀️",mStreak,"Morning"],["🌙",eStreak,"Evening"],["✅",tasks.filter(t2=>t2.dn).length,"Tasks"],["😊",mdStreak,"Mood"]].map(([l,v,label])=>(
-              <div key={l} style={{textAlign:"center"}}><div style={{fontFamily:"Fredoka One",fontSize:18,color:t.acc}}>{v}</div><div style={{fontSize:9,fontWeight:700,color:"#AAA"}}>{l+" "+label}</div></div>
-            ))}
-          </div>
-          {rewards.map(r=>{
-            const{cur,max}=getRP(r);const earned=max>0?cur>=max:false;
-            return(
-              <div key={r.id} className="rc" style={{border:earned?"2px solid #FFD93D":"none"}}>
-                <div className="ri">{r.ic}</div>
-                <div style={{flex:1}}><div style={{fontWeight:800,fontSize:11,color:t.dark}}>{r.rw}</div><div style={{fontSize:9,color:"#AAA",marginTop:1}}>{"🎯 "+r.tr}</div>
-                  {earned&&<div className="re">🎉 Earned!</div>}
-                  {max>0&&!earned&&<div className="sbar">{Array.from({length:Math.min(max,10)}).map((_,i)=><div key={i} className={"sd"+(i<cur?" on":"")}/>)}</div>}
-                </div>
-                <button className="db" onClick={()=>setRewards(p=>p.filter(x=>x.id!==r.id))}>×</button>
-              </div>
-            );
-          })}
-          <div className="sl">Add reward</div>
-          <div style={{display:"flex",gap:4,marginBottom:4}}><input className="pi" style={{width:42,textAlign:"center",fontSize:16}} placeholder="🎁" value={nRewI} onChange={e=>setNRewI(e.target.value)} maxLength={2}/><input className="pi" placeholder="Your reward..." value={nRew} onChange={e=>setNRew(e.target.value)}/></div>
-          <input className="pi" style={{marginBottom:5}} placeholder="When do you earn it?" value={nRewT} onChange={e=>setNRewT(e.target.value)}/>
-          <button className="btn bp bsm" onClick={()=>{if(!nRew.trim()||!nRewT.trim())return;setRewards(r=>[...r,{id:"rc"+Date.now(),tr:nRewT,rw:nRew,ic:nRewI,sk:0,ty:"custom"}]);setNRew("");setNRewT("");setNRewI("🎁");}}>Add 🏆</button>
-        </Sect>
-
-        <Sect id="app" icon="🎨" title="App Settings">
-          <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"4px 0 6px"}}>Theme</div>
-          <div className="th-grid">{Object.entries(THEMES).map(([key,th2])=><button key={key} className={"th-btn"+(theme===key?" on":"")} style={{background:"linear-gradient(135deg,"+th2.h1+","+th2.h2+")",color:"white"}} onClick={()=>setTheme(key)}>{th2.name}</button>)}</div>
-          <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD features</div><div className="tog-sub">Aversion ratings, ADHD-specific tips, dreaded task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
-          <div className="tog-row"><div><div className="tog-lbl">📅 Start week on Monday</div></div><button className={"tog"+(calStartMon?" on":"")} onClick={()=>setCalStartMon(s=>!s)}/></div>
-          <div style={{marginTop:9,display:"flex",gap:7}}>
-            <div style={{flex:1}}><div className="pf"><label>Suggest tasks from</label><input className="pi" type="time" value={taskFrom} onChange={e=>setTaskFrom(e.target.value)}/></div></div>
-            <div style={{flex:1}}><div className="pf"><label>Suggest tasks until</label><input className="pi" type="time" value={taskTo} onChange={e=>setTaskTo(e.target.value)}/></div></div>
-          </div>
-          <div className="pf"><label>Spotify playlist URL</label><input className="pi" placeholder="https://open.spotify.com/playlist/..." value={spotifyUrl} onChange={e=>setSpotifyUrl(e.target.value)}/></div>
-          <div style={{marginTop:9}}><button className="btn bs" style={{width:"100%",fontSize:11}} onClick={()=>{if(window.confirm("Redo setup wizard? Your data will be kept."))setOnboarded(false);}}>Redo Setup Wizard</button></div>
-        </Sect>
-
-        <div className="card" style={{textAlign:"center",background:"linear-gradient(135deg,"+t.h1+"12,"+t.h2+"12)",marginTop:4}}>
-          <div style={{fontSize:30,marginBottom:4}}>🧠</div>
-          <div style={{fontFamily:"Fredoka One",fontSize:15,color:t.dark}}>BrainBloom</div>
-          <p style={{fontSize:9,color:"#AAA",fontWeight:600,marginTop:2}}>Your personal planner. Built with 💙</p>
-        </div>
-      </>
-    );
-  };
-
   // ══ RENDER ══
-  const pages={"🏠":rHome,"📆":rCalendar,"✅":rTodo,"⚙️":rSettings};
   const TAB_LABELS={"🏠":"Home","📆":"Calendar","✅":"To-Do","⚙️":"Settings"};
+
+  const renderTab=()=>{
+    if(tab==="🏠")return rHome();
+    if(tab==="📆")return rCalendar();
+    if(tab==="✅")return rTodo();
+    if(tab==="⚙️")return<SettingsPage
+      theme={theme} setTheme={setTheme}
+      profName={profName} setProfName={setProfName}
+      role={role} setRole={setRole}
+      locs={locs} setLocs={setLocs}
+      wantCycle={wantCycle} setWantCycle={setWantCycle}
+      wantSpend={wantSpend} setWantSpend={setWantSpend}
+      wantADHD={wantADHD} setWantADHD={setWantADHD}
+      morningList={morningList} setMorningList={setMorningList}
+      eveningList={eveningList} setEveningList={setEveningList}
+      incomes={incomes} setIncomes={setIncomes}
+      fixedCosts={fixedCosts} setFixedCosts={setFixedCosts}
+      oneOffIncome={oneOffIncome} setOneOffIncome={setOneOffIncome}
+      spends={spends} setSpends={setSpends}
+      finSetup={finSetup} setFinSetup={setFinSetup}
+      lps={lps} setLps={setLps}
+      cLen={cLen} setCLen={setCLen}
+      cDay={cDay} cPhase={cPhase}
+      rewards={rewards} setRewards={setRewards}
+      mStreak={mStreak} eStreak={eStreak} mdStreak={mdStreak}
+      tasks={tasks}
+      hasCommute={hasCommute} setHasCommute={setHasCommute}
+      commuteMins={commuteMins} setCommuteMins={setCommuteMins}
+      commuteEveMins={commuteEveMins} setCommuteEveMins={setCommuteEveMins}
+      taskFrom={taskFrom} setTaskFrom={setTaskFrom}
+      taskTo={taskTo} setTaskTo={setTaskTo}
+      spotifyUrl={spotifyUrl} setSpotifyUrl={setSpotifyUrl}
+      calStartMon={calStartMon} setCalStartMon={setCalStartMon}
+      tourDone={tourDone} tourSkipped={tourSkipped}
+      setShowTour={setShowTour} setOnboarded={setOnboarded}
+      newLoc2={newLoc2} setNewLoc2={setNewLoc2}
+      getRP={getRP} lc={lc} le={le}
+    />;
+    return null;
+  };
 
   return(
     <>
@@ -1924,50 +1984,4 @@ export default function App(){
         <div className="tabs">
           {["🏠","📆","✅","⚙️"].map(tb=>(
             <button key={tb} className={"tab"+(tab===tb?" on":"")} onClick={()=>setTab(tb)}>
-              {tb}<div style={{fontSize:8,marginTop:1}}>{TAB_LABELS[tb]}</div>
-            </button>
-          ))}
-        </div>
-        <div className="pg">{pages[tab]&&pages[tab]()}</div>
-
-        {/* Draggable FAB */}
-        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x,zIndex:fabOpen?202:200}} onClick={()=>setFabOpen(o=>!o)}>
-          {fabOpen?"✕":"✦"}
-        </button>
-
-        {/* FAB menu */}
-        {fabOpen&&<div style={{position:"fixed",inset:0,zIndex:201,pointerEvents:"none"}}>
-          <div style={{position:"absolute",inset:0,pointerEvents:"all"}} onClick={()=>setFabOpen(false)}/>
-          <div className="fab-menu" style={{position:"absolute",top:Math.max(fabPos.y-130,10),left:Math.max(Math.min(fabPos.x-20,window.innerWidth-200),10),pointerEvents:"all",zIndex:202}}>
-            <button className="fab-opt" style={{background:"linear-gradient(135deg,#C77DFF,#7B2FBE)",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowVoice(true);}}>
-              🎙️ <span>Voice dump</span><span style={{fontSize:10,opacity:.8}}>Tell me anything</span>
-            </button>
-            <button className="fab-opt" style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowFocus(true);}}>
-              ⏱️ <span>Focus timer</span><span style={{fontSize:10,opacity:.8}}>Start a session</span>
-            </button>
-          </div>
-        </div>}
-
-        {/* Modals */}
-        {showVoice&&<VoiceSheet onClose={()=>setShowVoice(false)} onResult={handleVoiceResult} locs={locs} profName={profName} role={role} theme={theme}/>}
-        {showFocus&&<FocusSheet onClose={()=>setShowFocus(false)} energy={energy} tasks={tasks} spotifyUrl={spotifyUrl} theme={theme}/>}
-        {showAddEv&&tab==="🏠"&&<AddEventModal onClose={()=>setShowAddEv(false)} onSave={ev=>setCalEvents(p=>[...p,ev])} locs={locs} initialDate={selDay} lc={lc} le={le} theme={theme}/>}
-        {showTour&&<TourOverlay onDone={()=>{setShowTour(false);setTourDone(true);}} onSkip={()=>{setShowTour(false);setTourSkipped(true);}} theme={theme}/>}
-        {detailItem&&<DetailModal
-          item={detailItem.item}
-          type={detailItem.type}
-          onClose={()=>setDetailItem(null)}
-          onDelete={()=>{
-            if(detailItem.type==="task")setTasks(ts=>ts.filter(t2=>t2.id!==detailItem.item.id));
-            else handleDeleteEv(detailItem.item,detailItem.iso);
-          }}
-          onEdit={(updated)=>{
-            if(detailItem.type==="task")setTasks(ts=>ts.map(t2=>t2.id===updated.id?updated:t2));
-            else setCalEvents(evs=>evs.map(ev=>ev.id===updated.id?updated:ev));
-          }}
-          locs={locs} lc={lc} le={le} theme={theme}
-        />}
-      </div>
-    </>
-  );
-}
+              {tb}<div style={{fontSize:8,marginTop:1}}>{TAB_L
