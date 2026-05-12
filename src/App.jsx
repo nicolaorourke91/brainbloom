@@ -1,27 +1,14 @@
-import{useState,useEffect,useRef,useMemo}from"react";
+import{useState,useEffect,useRef,useMemo,useCallback}from"react";
 
-// STUB: Push notifications — needs Firebase Cloud Messaging + backend service worker
-// To implement: set up FCM, replace this with POST to /api/schedule-notification
-function stubNotification(title,body){console.log("STUB notification:",title,body);}
-
-// STUB: Spotify OAuth — needs Spotify Developer App + backend token exchange
-// To implement: Spotify Web Playback SDK + /auth/spotify backend endpoint
+// STUB: Push notifications (needs Firebase Cloud Messaging + backend)
+function stubNotification(title,body){console.log("STUB:",title,body);}
+// STUB: Spotify OAuth (needs backend token exchange)
 function stubPlayMusic(mood){console.log("STUB music:",mood);}
-
-// STUB: Apple Health / Google Fit — needs Capacitor Health plugin (native wrapper)
-// To implement: npm install @capacitor-community/health, wrap in Capacitor app
-async function stubGetHealthData(){console.log("STUB health");return null;}
-
-// STUB: Open Banking — needs Plaid or TrueLayer + secure backend (never client-side)
-// To implement: TrueLayer API, server-side token exchange
-async function stubGetBankTransactions(){console.log("STUB bank");return[];}
-
-// STUB: Wearables (Apple Watch / Wear OS) — needs native app wrapper
-// To implement: WatchKit (iOS) or Wear OS API via Capacitor/React Native bridge
-async function stubGetWearableData(){console.log("STUB wearable");return null;}
-
-// STUB: App blocking — NOT possible in PWA, needs iOS Screen Time or Android Digital Wellbeing
-// To implement: native Capacitor plugin, Screen Time API (iOS 12+)
+// STUB: Apple Health/Google Fit (needs Capacitor Health plugin)
+async function stubGetHealthData(){return null;}
+// STUB: Open Banking (needs Plaid/TrueLayer + secure backend)
+async function stubGetBankTransactions(){return[];}
+// STUB: App blocking (NOT possible in PWA, needs native wrapper)
 function stubBlockApps(){console.log("STUB block apps — native only");}
 
 const THEMES={
@@ -36,51 +23,50 @@ const THEMES={
 
 const PHASES=[
   {id:"m",l:"Menstrual",ds:[1,2,3,4,5],e:"🌑",c:"#E63946",energy:"Very low",
-   adhd:"Oestrogen and progesterone are at their lowest right now — focus, mood and energy are all affected. This is biological, not personal.",
+   adhd:"Oestrogen and progesterone are at their lowest — focus, mood and energy are all affected. This is biological, not personal.",
    general:"Energy is naturally lower right now. Smaller, achievable tasks are the smart strategy.",
    tips:["Lean on quick wins only","Use the spinner to start tasks","Extra rest is genuinely necessary","Avoid major decisions"],
-   spend:"Comfort spending risk is higher right now. Watch takeaways and online shopping."},
+   spend:"Comfort spending risk is higher right now."},
   {id:"f",l:"Follicular",ds:[6,7,8,9,10,11,12,13],e:"🌒",c:"#FFD93D",energy:"Rising",
-   adhd:"Rising oestrogen improves dopamine sensitivity — focus becomes more achievable and planning feels easier.",
-   general:"Rising energy and improving mood make this a good window to plan ahead and tackle medium-difficulty tasks.",
+   adhd:"Rising oestrogen improves dopamine sensitivity — focus becomes more achievable.",
+   general:"Rising energy makes this a good window to plan ahead.",
    tips:["Great time to plan and set goals","Tackle medium-difficulty tasks","Good for learning new things","Use this window strategically"],
    spend:"Mood improving — a good time to review your budget calmly."},
   {id:"o",l:"Ovulation",ds:[14,15,16],e:"🌕",c:"#6BCB77",energy:"High",
-   adhd:"Peak oestrogen equals peak dopamine. Many people with ADHD feel most neurotypical at ovulation — sharper, more sociable, more capable.",
-   general:"Peak energy and focus. Your best week — take advantage of it for your most challenging tasks.",
+   adhd:"Peak oestrogen equals peak dopamine. Many with ADHD feel most neurotypical at ovulation.",
+   general:"Peak energy and focus. Your best week — take advantage of it.",
    tips:["Your best week — tackle big tasks NOW","Schedule important meetings","Multi-step projects are manageable","Social energy is at its peak"],
-   spend:"Confidence can lead to larger purchases. Good week for planned buys."},
+   spend:"Confidence can lead to larger purchases."},
   {id:"l",l:"Luteal",ds:[17,18,19,20,21,22,23,24,25,26,27,28],e:"🌖",c:"#9B5DE5",energy:"Declining",
-   adhd:"Progesterone rises as oestrogen drops — symptoms return and worsen days 24–28. This is hormonal, not personal.",
-   general:"Energy naturally declines in this phase. Front-load your week and be kind to yourself toward the end.",
+   adhd:"Progesterone rises as oestrogen drops — symptoms return. This is hormonal, not personal.",
+   general:"Energy naturally declines. Front-load your week and be kind to yourself.",
    tips:["Front-load your week while energy holds","Reduce commitments toward the end","Comfort-seeking is a normal hormonal response","Be exceptionally kind to yourself"],
-   spend:"Highest risk phase for impulse spending. Try the 24-hour rule before buying."},
+   spend:"Highest risk phase for impulse spending. Try the 24-hour rule."},
 ];
 
 const TIPS=[
   {trigger:"high_energy",tip:"⚡ High energy right now!",text:"This is your peak focus window. Tackle your most challenging or avoided task while your concentration is sharp.",source:"Flow State Research, Csikszentmihalyi"},
-  {trigger:"low_energy",tip:"💙 Low energy is valid",text:"Your brain expends enormous energy on focus and decision-making. Rest is not laziness — it is recovery. Small wins count.",source:"Cognitive Load Theory"},
-  {trigger:"brain_fog",tip:"🌫️ Foggy day",text:"Working alongside someone else — even on a video call — significantly improves focus on foggy days. Try body doubling.",source:"Productivity Research, 2021"},
-  {trigger:"anxiety",tip:"😰 Feeling anxious",text:"Anxiety and low focus share neural pathways. When stress is high, breaking tasks into the smallest possible steps helps most.",source:"Cognitive Behavioural Research"},
+  {trigger:"low_energy",tip:"💙 Low energy is valid",text:"Your brain expends enormous energy on focus and decision-making. Rest is not laziness — it is recovery.",source:"Cognitive Load Theory"},
+  {trigger:"brain_fog",tip:"🌫️ Foggy day",text:"Working alongside someone else — even on a video call — significantly improves focus on foggy days.",source:"Productivity Research, 2021"},
+  {trigger:"anxiety",tip:"😰 Feeling anxious",text:"Anxiety and low focus share neural pathways. Breaking tasks into the smallest possible steps helps most.",source:"Cognitive Behavioural Research"},
   {trigger:"general",tip:"🧠 Did you know?",text:"Time-blocking — giving tasks a specific slot — creates structure that makes starting significantly easier.",source:"Time Management Research"},
-  {trigger:"general",tip:"🧠 Did you know?",text:"Even 20 minutes of walking increases dopamine and serotonin, directly improving mood and concentration for hours after.",source:"Exercise and Cognition Research, Ratey"},
-  {trigger:"general",tip:"💡 Sleep and focus",text:"Sleep quality directly affects next-day focus, decision-making and emotional regulation. Protecting sleep protects everything.",source:"Sleep Research, Walker"},
-  {trigger:"headache",tip:"🤕 Headache today",text:"Dehydration and skipped meals are common headache triggers. Even a glass of water and a small snack can make a difference.",source:"Nutrition and Cognition Research"},
-  {trigger:"good_day",tip:"🚀 Everything is going well!",text:"On good days, a brain dump — writing every task and idea — frees up mental space and protects your focus for the hours ahead.",source:"GTD Methodology, Allen"},
+  {trigger:"general",tip:"🧠 Did you know?",text:"Even 20 minutes of walking increases dopamine and serotonin, directly improving mood and concentration.",source:"Exercise and Cognition Research, Ratey"},
+  {trigger:"general",tip:"💡 Sleep and focus",text:"Sleep quality directly affects next-day focus, decision-making and emotional regulation.",source:"Sleep Research, Walker"},
+  {trigger:"headache",tip:"🤕 Headache today",text:"Dehydration and skipped meals are common triggers. Even a glass of water and a small snack can help.",source:"Nutrition and Cognition Research"},
+  {trigger:"good_day",tip:"🚀 Everything is going well!",text:"On good days, a brain dump frees up mental space and protects your focus for the hours ahead.",source:"GTD Methodology, Allen"},
 ];
-
 const ADHD_TIPS=[
-  {trigger:"high_energy",tip:"⚡ ADHD peak window!",text:"ADHD brains work in peaks and troughs. This is your dopamine peak — tackle your most avoided task NOW while your prefrontal cortex is firing.",source:"Barkley, 2015"},
-  {trigger:"low_energy",tip:"💙 ADHD fatigue is real",text:"ADHD brains expend significantly more energy on everyday tasks than neurotypical brains. Rest is neurological necessity, not laziness.",source:"Brown, 2013"},
-  {trigger:"brain_fog",tip:"🌫️ ADHD brain fog",text:"Body doubling — working alongside someone, even on a video call — significantly improves focus for ADHD brains on foggy days.",source:"Hallowell and Ratey, 2021"},
-  {trigger:"anxiety",tip:"😰 ADHD and anxiety",text:"70% of people with ADHD experience anxiety. They share neural pathways — when dopamine is low, the threat-detection system overactivates.",source:"Kessler et al., 2006"},
-  {trigger:"luteal",tip:"🌖 Luteal phase and ADHD",text:"Falling oestrogen directly reduces dopamine availability. This is why symptoms feel worse right now. You are not failing.",source:"Douma et al., 2020"},
-  {trigger:"menstrual",tip:"🌑 Menstrual phase and ADHD",text:"ADHD symptoms peak during menstruation. Smaller, achievable tasks protect your sense of competence on these days.",source:"Quinn and Madhoo, 2014"},
-  {trigger:"ovulation",tip:"🌕 ADHD peak performance!",text:"Peak oestrogen equals peak dopamine. Many people with ADHD feel most neurotypical at ovulation. Use it!",source:"Douma et al., 2020"},
-  {trigger:"general",tip:"🧠 ADHD: Did you know?",text:"ADHD brains have a now vs not-now time perception. Time-blocking creates artificial urgency that works with your brain rather than against it.",source:"Barkley, 2011"},
-  {trigger:"general",tip:"🧠 ADHD: Did you know?",text:"Exercise increases dopamine and norepinephrine — the exact same neurotransmitters targeted by ADHD medication. Even 20 minutes helps.",source:"Ratey, 2008"},
-  {trigger:"headache",tip:"🤕 ADHD and headaches",text:"The same executive dysfunction that makes tasks hard also makes self-care routines difficult. Dehydration and skipped meals are common triggers.",source:"CHADD, 2022"},
-  {trigger:"good_day",tip:"🚀 ADHD good day!",text:"On good days, do a brain dump — write every task, worry and idea. This frees up working memory, which ADHD brains have less of.",source:"Allen, 2001"},
+  {trigger:"high_energy",tip:"⚡ ADHD peak window!",text:"ADHD brains work in peaks and troughs. This is your dopamine peak — tackle your most avoided task NOW.",source:"Barkley, 2015"},
+  {trigger:"low_energy",tip:"💙 ADHD fatigue is real",text:"ADHD brains expend significantly more energy on everyday tasks. Rest is neurological necessity.",source:"Brown, 2013"},
+  {trigger:"brain_fog",tip:"🌫️ ADHD brain fog",text:"Body doubling — working alongside someone, even on a video call — significantly improves focus.",source:"Hallowell and Ratey, 2021"},
+  {trigger:"anxiety",tip:"😰 ADHD and anxiety",text:"70% of people with ADHD experience anxiety. When dopamine is low, the threat-detection system overactivates.",source:"Kessler et al., 2006"},
+  {trigger:"luteal",tip:"🌖 Luteal phase and ADHD",text:"Falling oestrogen directly reduces dopamine availability. You are not failing.",source:"Douma et al., 2020"},
+  {trigger:"menstrual",tip:"🌑 Menstrual phase and ADHD",text:"ADHD symptoms peak during menstruation. Smaller tasks protect your sense of competence.",source:"Quinn and Madhoo, 2014"},
+  {trigger:"ovulation",tip:"🌕 ADHD peak performance!",text:"Peak oestrogen equals peak dopamine. Many with ADHD feel most neurotypical at ovulation. Use it!",source:"Douma et al., 2020"},
+  {trigger:"general",tip:"🧠 ADHD: Did you know?",text:"ADHD brains have a now vs not-now time perception. Time-blocking creates artificial urgency that works with your brain.",source:"Barkley, 2011"},
+  {trigger:"general",tip:"🧠 ADHD: Did you know?",text:"Exercise increases dopamine and norepinephrine — the exact same neurotransmitters targeted by ADHD medication.",source:"Ratey, 2008"},
+  {trigger:"headache",tip:"🤕 ADHD and headaches",text:"The same executive dysfunction that makes tasks hard also makes self-care routines difficult.",source:"CHADD, 2022"},
+  {trigger:"good_day",tip:"🚀 ADHD good day!",text:"On good days, do a brain dump — write every task, worry and idea. This frees up working memory.",source:"Allen, 2001"},
 ];
 
 const MOODS=[{e:"😴",l:"Exhausted",n:1},{e:"😞",l:"Low",n:2},{e:"😐",l:"Meh",n:3},{e:"🙂",l:"Good",n:4},{e:"😄",l:"Great",n:5},{e:"🤩",l:"Energised",n:6}];
@@ -90,7 +76,6 @@ const AVS=[{s:0,l:"Fine",e:"😊",c:"#6BCB77"},{s:1,l:"Meh",e:"😐",c:"#FFD93D"
 const SCATS=[{id:"groceries",l:"Groceries",e:"🛒",c:"#6BCB77"},{id:"takeaway",l:"Takeaway",e:"🍕",c:"#FF6B6B"},{id:"coffee",l:"Coffee",e:"☕",c:"#FFB347"},{id:"transport",l:"Transport",e:"🚗",c:"#4D96FF"},{id:"health",l:"Health",e:"💊",c:"#4ECDC4"},{id:"other",l:"Other",e:"💳",c:"#AAA"}];
 const WDAYS=["Su","Mo","Tu","We","Th","Fr","Sa"];
 const WDAYS_MON=["Mo","Tu","We","Th","Fr","Sa","Su"];
-
 const DEFAULT_MORNING=[{id:"m1",l:"Brush teeth 🦷",d:false,t:3},{id:"m2",l:"Breakfast 🍳",d:false,t:15},{id:"m3",l:"Medication 💊",d:false,t:1},{id:"m4",l:"Get ready 👗",d:false,t:20}];
 const DEFAULT_EVENING=[{id:"e1",l:"Brush teeth 🦷",d:false,t:3},{id:"e2",l:"Medication 💊",d:false,t:1},{id:"e3",l:"Shower 🚿",d:false,t:15},{id:"e4",l:"Wind down 😌",d:false,t:10}];
 const DEFAULT_REWARDS=[
@@ -101,15 +86,13 @@ const DEFAULT_REWARDS=[
   {id:"r5",tr:"Finish a dreaded task",rw:"💅 Treat yourself — you earned it",ic:"💅",sk:1,ty:"dr"},
   {id:"r6",tr:"14-day morning streak",rw:"💆 Book yourself a massage",ic:"💆",sk:14,ty:"ms14"},
 ];
-
 const TOUR=[
-  {emoji:"🏠",title:"Welcome to BrainBloom",text:"This is your Home screen — your daily hub. Check in each day to set your mood and energy, then see your calendar, tasks and routines at a glance."},
-  {emoji:"📆",title:"Your Calendar",text:"Tap any date to see, plan or log anything. Add events, track your cycle, view financial commitments and log how you felt — all in one place. Tap any item to view, edit or delete it."},
+  {emoji:"🏠",title:"Welcome to BrainBloom",text:"This is your Home screen — your daily hub. Check in each morning to set your mood and energy, then see your schedule and routines all in one place."},
+  {emoji:"📆",title:"Your Calendar",text:"Tap any date to see, plan or log anything. Add events, track your cycle, view financial commitments. Tap any item to view, edit or delete it."},
   {emoji:"✅",title:"Your To-Do List",text:"Add tasks once and let the app do the rest. BrainBloom suggests the right task at the right time based on your energy, location and how you feel about it."},
-  {emoji:"✦",title:"Your Quick Actions Button",text:"See the glowing button on screen? Tap it anytime to open two options — start a Voice Dump to speak your thoughts and let the app organise them, or launch a Focus Timer with music to power through a session. Drag it anywhere on screen to move it out of the way."},
+  {emoji:"✦",title:"Your Quick Actions Button",text:"See the glowing button on screen? Tap it anytime for Voice Dump, Focus Timer, or the Task Spinner. Drag it anywhere on screen to move it."},
   {emoji:"⚙️",title:"Settings",text:"Everything about you lives here — your profile, finances, cycle tracking, rewards and app preferences. Use the search bar to find anything instantly."},
 ];
-
 const SEARCH_INDEX=[
   {terms:["name","profile","occupation","role","who","about","morning","evening","routine","commute","travel","location","wake","sleep"],section:"me"},
   {terms:["budget","finance","income","salary","money","spend","bill","cost","mortgage","bank","cash","expenditure","tax","refund"],section:"finance"},
@@ -129,16 +112,14 @@ const addDays=(iso,n)=>{const d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+
 const toMonthly=(a,f)=>f==="weekly"?+a*52/12:f==="fortnightly"?+a*26/12:f==="annually"?+a/12:+a;
 const getCDay=(lps,cl=28)=>{if(!lps)return null;const d=Math.floor((Date.now()-new Date(lps).getTime())/86400000);return(d%cl)+1;};
 const getCPhase=(d)=>{if(!d)return null;return PHASES.find(p=>p.ds.includes(Math.min(d,28)))||PHASES[3];};
-
+const isMorning=()=>{const h=new Date().getHours();return h>=3&&h<15;};
 const getGreeting=()=>{
   const h=new Date().getHours();
-  if(h<12)return{text:"Good morning",emoji:"☀️",isEve:false};
-  if(h<15)return{text:"Good afternoon",emoji:"🌤️",isEve:false};
-  if(h<18)return{text:"Good evening",emoji:"🌅",isEve:true};
-  if(h<22)return{text:"Evening",emoji:"🌙",isEve:true};
+  if(h>=3&&h<12)return{text:"Good morning",emoji:"☀️",isEve:false};
+  if(h>=12&&h<15)return{text:"Good afternoon",emoji:"🌤️",isEve:false};
+  if(h>=15&&h<21)return{text:"Good evening",emoji:"🌅",isEve:true};
   return{text:"Winding down",emoji:"🌙",isEve:true};
 };
-
 const getTip=(mood,energy,syms,cphId,adhdMode)=>{
   const pool=adhdMode?ADHD_TIPS:TIPS;
   if(cphId==="l")return pool.find(t=>t.trigger==="luteal")||pool.find(t=>t.trigger==="general");
@@ -153,7 +134,6 @@ const getTip=(mood,energy,syms,cphId,adhdMode)=>{
   const g=pool.filter(t=>t.trigger==="general");
   return g[Math.floor(Date.now()/86400000)%g.length];
 };
-
 const eventOccursOn=(ev,iso)=>{
   if(!ev||!ev.date)return false;
   if(ev.exceptions&&ev.exceptions.includes(iso))return false;
@@ -166,42 +146,32 @@ const eventOccursOn=(ev,iso)=>{
   if(ev.recur==="monthly")return d.getDate()===s.getDate();
   return false;
 };
-
 const recurDoneThisWeek=(task)=>{
   if(!task.recur||task.recur==="none")return false;
   if(!task.lastDone)return false;
   const ld=new Date(task.lastDone),now=new Date();
   if(task.recur==="daily")return ld.toDateString()===now.toDateString();
-  if(task.recur==="weekly"){
-    const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
-    return ld>=mon;
-  }
-  if(task.recur==="fortnightly"){
-    const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
-    const fort=new Date(mon);fort.setDate(mon.getDate()-7);
-    return ld>=fort;
-  }
+  if(task.recur==="weekly"){const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return ld>=mon;}
+  if(task.recur==="fortnightly"){const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);const fort=new Date(mon);fort.setDate(mon.getDate()-7);return ld>=fort;}
   if(task.recur==="monthly")return ld.getMonth()===now.getMonth()&&ld.getFullYear()===now.getFullYear();
   return false;
 };
-
+const getMoodColor=(moodE)=>{const m=MOODS.find(x=>x.e===moodE);if(!m)return"#EEE";return m.n>=5?"#6BCB77":m.n>=3?"#FFD93D":"#FF6B6B";};
 const LOC_COLORS=["#FF6B6B","#4D96FF","#C77DFF","#FFB347","#6BCB77","#FF8FAB","#4ECDC4","#06D6A0"];
 const LOC_EMOJIS=["🏠","💼","🎓","🚌","🛍️","🏋️","🌿","🏥"];
 const getLC=(lo,locs)=>{const i=locs.indexOf(lo);return i>=0?LOC_COLORS[i%LOC_COLORS.length]:"#888";};
 const getLE=(lo,locs)=>{const i=locs.indexOf(lo);return i>=0?LOC_EMOJIS[i%LOC_EMOJIS.length]:"📍";};
 
-function makeCSS(t){return `
+function makeCSS(t){return`
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .app{max-width:430px;margin:0 auto;min-height:100vh;background:${t.bg};padding-bottom:85px;}
-.hdr{background:linear-gradient(135deg,${t.h1},${t.h2} 50%,${t.h3});padding:14px 15px 11px;position:relative;overflow:hidden;}
+.hdr{background:linear-gradient(135deg,${t.h1},${t.h2} 50%,${t.h3});padding:14px 15px 11px;position:relative;overflow:hidden;cursor:pointer;}
 .hdr::before{content:'';position:absolute;inset:0;opacity:.06;background:radial-gradient(circle at 20% 50%,white 1px,transparent 1px) 0 0/28px 28px;}
 .ht{font-family:'Fredoka One',cursive;font-size:21px;color:white;position:relative;}
 .hs{font-size:10px;color:rgba(255,255,255,.85);font-weight:600;position:relative;}
 .hrow{display:flex;justify-content:space-between;align-items:center;}
-.dbg{background:rgba(255,255,255,.25);border-radius:16px;padding:2px 8px;font-size:10px;font-weight:700;color:white;}
-.pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
-.pill{background:rgba(255,255,255,.25);border-radius:16px;padding:2px 8px;font-size:10px;font-weight:700;color:white;}
+.dbg{background:rgba(255,255,255,.25);border-radius:16px;padding:2px 8px;font-size:10px;font-weight:700;color:white;cursor:pointer;}
 .tabs{display:flex;gap:2px;padding:7px 9px;background:${t.card};box-shadow:0 2px 8px rgba(0,0,0,.07);position:sticky;top:0;z-index:20;}
 .tab{flex:1;padding:6px 3px;border-radius:10px;border:2px solid transparent;font-family:'Nunito',sans-serif;font-weight:700;font-size:10px;cursor:pointer;transition:all .2s;background:#F5F5F5;color:#777;text-align:center;line-height:1.3;}
 .tab.on{background:${t.acc};color:white;border-color:${t.acc};}
@@ -269,10 +239,6 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .tip-t{font-family:'Fredoka One',cursive;font-size:13px;color:${t.acc};margin-bottom:3px;}
 .tip-x{font-size:11px;font-weight:600;color:#444;line-height:1.5;}
 .tip-s{font-size:9px;color:#AAA;font-weight:600;margin-top:3px;font-style:italic;}
-.rn{background:linear-gradient(135deg,#FFF4CC,#FFE5E5);border:1.5px solid #FFD93D;border-radius:13px;padding:11px;margin-bottom:9px;cursor:pointer;}
-.sbar{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;}
-.sd{width:13px;height:13px;border-radius:50%;border:2px solid #EEE;background:#F5F5F5;}
-.sd.on{background:#FFD93D;border-color:#FFD93D;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 .cal-hd{text-align:center;font-size:8px;font-weight:800;color:#BBB;text-transform:uppercase;padding:2px 0;}
 .cal-d{aspect-ratio:1;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;position:relative;transition:all .15s;border:2px solid transparent;}
@@ -281,12 +247,13 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .cal-d.sel{border-color:${t.dark};transform:scale(1.1);}
 .cal-dots{display:flex;gap:1px;position:absolute;bottom:2px;left:50%;transform:translateX(-50%);}
 .cal-dot{width:3px;height:3px;border-radius:50%;}
-.day-ev{display:flex;gap:7px;padding:7px 9px;border-radius:9px;margin-bottom:5px;border-left:4px solid;}
+.day-ev{display:flex;gap:7px;padding:7px 9px;border-radius:9px;margin-bottom:5px;border-left:4px solid;cursor:pointer;}
+.day-ev:hover{opacity:.85;}
+.inline-edit{background:${t.bg};border-radius:9px;padding:9px;margin-top:5px;border:1.5px solid ${t.acc}44;}
 .ww{display:flex;justify-content:center;align-items:center;flex-direction:column;padding:10px 0;}
 .wc{position:relative;width:200px;height:200px;}
 .wp{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:18px solid ${t.acc};z-index:10;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3));}
 .sb{margin-top:12px;padding:10px 28px;background:linear-gradient(135deg,${t.h1},${t.h2});color:white;border:none;border-radius:13px;font-family:'Fredoka One',cursive;font-size:16px;cursor:pointer;}
-.sb:disabled{opacity:.5;cursor:not-allowed;}
 .sr{text-align:center;margin-top:10px;padding:11px;background:${t.h1}12;border-radius:11px;border:2px solid ${t.acc};}
 .rc{background:${t.card};border-radius:12px;padding:11px;margin-bottom:7px;display:flex;align-items:center;gap:9px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
 .ri{font-size:26px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:#FFF5EA;border-radius:10px;flex-shrink:0;}
@@ -305,7 +272,6 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .cycle-strip::-webkit-scrollbar{display:none;}
 .cdd{width:21px;height:21px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;flex-shrink:0;color:white;}
 .fin-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #F5F5F5;}
-.tooltip{background:${t.acc}10;border:1.5px solid ${t.acc}35;border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:10px;font-weight:600;color:#444;display:flex;align-items:flex-start;gap:5px;}
 .empty{text-align:center;padding:20px 11px;color:#CCC;}
 .empty-i{font-size:34px;margin-bottom:4px;}
 .empty p{font-weight:600;font-size:11px;}
@@ -314,9 +280,8 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .sect-hdr:hover{background:${t.bg}55;}
 .sect-title{font-family:'Fredoka One',cursive;font-size:14px;color:${t.dark};display:flex;align-items:center;gap:7px;}
 .sect-body{padding:0 13px 13px;}
-.fab{position:fixed;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,${t.h1},${t.h2});border:none;cursor:grab;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 5px 18px ${t.h1}55;z-index:200;touch-action:none;user-select:none;-webkit-user-select:none;}
-.fab:active{cursor:grabbing;}
-.fab-menu{position:fixed;display:flex;flex-direction:column;gap:8px;z-index:201;}
+.fab{position:fixed;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,${t.h1},${t.h2});border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 5px 18px ${t.h1}55;z-index:200;touch-action:none;user-select:none;-webkit-user-select:none;}
+.fab-menu{position:fixed;display:flex;flex-direction:column;gap:8px;z-index:202;}
 .fab-opt{display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:22px;border:none;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);white-space:nowrap;}
 .voverlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:201;}
 .vsheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:${t.card};border-radius:20px 20px 0 0;padding:17px;z-index:202;max-height:88vh;overflow-y:auto;}
@@ -345,19 +310,16 @@ body{background:${t.bg};font-family:'Nunito',sans-serif;}
 .search-wrap{position:relative;margin-bottom:10px;}
 .search-in{width:100%;padding:9px 13px 9px 36px;border:2px solid #EEE;border-radius:22px;font-family:'Nunito',sans-serif;font-weight:600;font-size:16px;outline:none;background:${t.card};color:${t.dark};}
 .search-in:focus{border-color:${t.acc};}
-.na{width:100%;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;resize:none;outline:none;min-height:55px;background:${t.card};color:${t.dark};}
+.na{width:100%;padding:7px 9px;border:2px solid #EEE;border-radius:8px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:600;resize:none;outline:none;min-height:80px;background:${t.card};color:${t.dark};}
 .na:focus{border-color:#C77DFF;}
 .mbar{width:3px;border-radius:2px;background:white;animation:bbc .8s ease-in-out infinite;}
 .mbars{display:flex;gap:2px;align-items:flex-end;height:13px;}
+.freeze-badge{background:#4D96FF22;border:1.5px solid #4D96FF;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:700;color:#4D96FF;display:inline-flex;align-items:center;gap:3px;}
 @keyframes sli{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes bbc{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
 `;}
 
-
-/* ================================================================
-   PWA INTRO SCREEN
-================================================================ */
 function PWAIntro({onDone}){
   const isPWA=typeof window!=="undefined"&&window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches;
   const isIOS=typeof navigator!=="undefined"&&/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -365,7 +327,7 @@ function PWAIntro({onDone}){
   useEffect(()=>{if(isPWA)onDone();},[]);
   if(isPWA)return null;
   return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#FF6B6B 0%,#FFD93D 50%,#6BCB77 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#FF6B6B 0%,#FFD93D 50%,#6BCB77 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,overflowY:"auto"}}>
       <div style={{background:"white",borderRadius:24,padding:"28px 22px",width:"100%",maxWidth:390,boxShadow:"0 20px 60px rgba(0,0,0,.18)",textAlign:"center"}}>
         <div style={{fontSize:52,marginBottom:10}}>🧠</div>
         <div style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:"#2D2D2D",marginBottom:6}}>BrainBloom</div>
@@ -401,235 +363,6 @@ function PWAIntro({onDone}){
   );
 }
 
-/* ================================================================
-   EVENT / TASK DETAIL MODAL
-================================================================ */
-function DetailModal({item,type,onClose,onDelete,onEdit,locs,lc,le,theme}){
-  const t=THEMES[theme]||THEMES.bloom;
-  const[editing,setEditing]=useState(false);
-  const[title,setTitle]=useState(item.title||item.tl||"");
-  const[evDate,setEvDate]=useState(item.date||item.deadline||"");
-  const[startTime,setStartTime]=useState(item.startTime||"");
-  const[endTime,setEndTime]=useState(item.endTime||"");
-  const handleStartEdit=(val)=>{
-    setStartTime(val);
-    if(!item.finType){
-      const[h,m]=val.split(":").map(Number);
-      const newH=(h+1)%24;
-      setEndTime(String(newH).padStart(2,"0")+":"+String(m).padStart(2,"0"));
-    }
-  };
-  const[allDay,setAllDay]=useState(item.allDay||false);
-  const[evLoc,setEvLoc]=useState(item.loc||item.lo||locs[0]||"Home");
-  const[cost,setCost]=useState(item.cost?item.cost.amount:"");
-  const[hasCost,setHasCost]=useState(!!item.cost);
-  const[nPri,setNPri]=useState(item.pr||"medium");
-  const[nMin,setNMin]=useState(item.mn||15);
-
-  const accentColor=type==="task"?"#6BCB77":type==="financial"?"#FFD93D":lc(item.loc||item.lo||"");
-  const icon=type==="task"?"✅":type==="financial"?"💰":"📅";
-
-  const saveEdit=()=>{
-    if(item.finType){
-      // Finance item edit — pass back with updated fields so parent can update incomes/costs
-      const updated={...item,title:title.trim()};
-      if(item.finType==="income_once"){updated.date=evDate;updated.amount=+cost;}
-      else if(item.finType==="income"||item.finType==="cost"){
-        updated.amount=+cost;
-        if(["monthly","annually"].includes(item.freq))updated.dayOfMonth=evDate;
-        if(["weekly","fortnightly"].includes(item.freq))updated.dayOfWeek=startTime;
-        if(item.freq==="fortnightly")updated.startDate=endTime;
-      }
-      onEdit(updated);
-    } else if(type==="event"||type==="financial"){
-      const updated={...item,title:title.trim(),date:evDate,startTime:allDay?"":startTime,endTime:allDay?"":endTime,allDay,loc:evLoc,id:item.id};
-      if(hasCost&&cost)updated.cost={amount:+cost,label:title.trim()};
-      else updated.cost=null;
-      onEdit(updated);
-    } else if(type==="task"){
-      onEdit({...item,tl:title.trim(),lo:evLoc,pr:nPri,mn:nMin,deadline:evDate||null});
-    }
-    setEditing(false);
-    onClose();
-  };
-
-  return(
-    <div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div className="modal">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
-          <div style={{display:"flex",alignItems:"center",gap:7}}>
-            <div style={{width:34,height:34,borderRadius:9,background:accentColor+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{icon}</div>
-            <div style={{fontFamily:"Fredoka One",fontSize:15,color:t.dark}}>{editing?"Edit":"Details"}</div>
-          </div>
-          <button className="db" onClick={onClose}>×</button>
-        </div>
-
-        {!editing&&<>
-          <div style={{background:t.bg,borderRadius:11,padding:"11px 13px",marginBottom:11}}>
-            <div style={{fontFamily:"Fredoka One",fontSize:17,color:t.dark,marginBottom:5}}>{item.title||item.tl}</div>
-            {item.finType&&<div style={{fontSize:11,fontWeight:700,color:"#F08C00",marginBottom:3}}>💰 {item.finType==="income"||item.finType==="income_once"?"Income":"Expense"}{item.amount?" · €"+item.amount:""}{item.cost?" · €"+item.cost.amount:""}</div>}
-            {item.freq&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>🔁 {item.freq}</div>}
-            {(item.date||item.deadline)&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>📅 {new Date((item.date||item.deadline)+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>}
-            {!item.allDay&&item.startTime&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>🕐 {item.startTime}{item.endTime?" – "+item.endTime:""}</div>}
-            {item.allDay&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>📅 All day</div>}
-            {(item.loc||item.lo)&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:lc(item.loc||item.lo),marginBottom:3}}>{le(item.loc||item.lo)}{item.loc||item.lo}</div>}
-            {item.recur&&item.recur!=="none"&&!item.finType&&<div style={{fontSize:11,fontWeight:600,color:"#4D96FF",marginBottom:3}}>🔁 Repeats {item.recur}</div>}
-            {item.cost&&!item.finType&&<div style={{fontSize:11,fontWeight:700,color:"#F08C00",marginBottom:3}}>💰 €{item.cost.amount}</div>}
-            {item.pr&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>Priority: {item.pr==="high"?"🔴 High":item.pr==="medium"?"🟡 Medium":"🟢 Low"}</div>}
-            {item.mn&&<div style={{fontSize:11,fontWeight:600,color:"#888"}}>⏱ {item.mn} min</div>}
-          </div>
-          <div style={{display:"flex",gap:7}}>
-            <button className="btn bp" style={{flex:1}} onClick={()=>setEditing(true)}>✏️ Edit</button>
-            <button className="btn bs" style={{flex:1,color:"#FF6B6B"}} onClick={()=>{onDelete();onClose();}}>🗑️ Delete</button>
-          </div>
-        </>}
-
-        {editing&&<>
-          {item.finType?<>
-            {/* Finance item edit */}
-            <div className="pf"><label>Label</label><input className="pi" value={title} onChange={e=>setTitle(e.target.value)}/></div>
-            <div className="pf"><label>Amount (€)</label><input className="pi" type="number" value={cost} onChange={e=>setCost(e.target.value)}/></div>
-            {(item.finType==="income_once")&&<div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>}
-            {(item.finType==="income"||item.finType==="cost")&&item.freq&&<>
-              {["monthly","annually"].includes(item.freq)&&<div className="pf"><label>Day of month</label><input className="pi" type="number" min="1" max="31" placeholder="e.g. 25" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>}
-              {["weekly","fortnightly"].includes(item.freq)&&<div className="pf"><label>Day of week</label><select className="pi" value={startTime} onChange={e=>setStartTime(e.target.value)}>{["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}</select></div>}
-              {item.freq==="fortnightly"&&<div className="pf"><label>Starting from (sets which fortnight)</label><input className="pi" type="date" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>}
-            </>}
-          </>:<>
-            {/* Regular event/task edit */}
-            <div className="pf"><label>Title</label><input className="pi" value={title} onChange={e=>setTitle(e.target.value)}/></div>
-            {(type==="event"||type==="financial")&&<>
-              <div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
-              <div className="tog-row" style={{marginBottom:7}}><div><div className="tog-lbl">All day</div></div><button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/></div>
-              {!allDay&&<div style={{display:"flex",gap:7,marginBottom:7}}>
-                <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>handleStartChange(e.target.value)}/></div>
-                <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
-              </div>}
-              <div className="tog-row" style={{marginBottom:hasCost?6:7}}><div><div className="tog-lbl">💰 Has a cost</div></div><button className={"tog"+(hasCost?" on":"")} onClick={()=>setHasCost(s=>!s)}/></div>
-              {hasCost&&<div className="pf"><label>Amount (€)</label><input className="pi" type="number" value={cost} onChange={e=>setCost(e.target.value)}/></div>}
-            </>}
-            {type==="task"&&<>
-              <div className="pf"><label>Deadline (optional)</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
-              <div className="pf"><label>Priority</label><div style={{display:"flex",gap:4}}>{[["high","🔴 High"],["medium","🟡 Medium"],["low","🟢 Low"]].map(([v,l])=><button key={v} style={{flex:1,padding:"6px 4px",borderRadius:9,border:"2px solid "+(nPri===v?t.acc:"#EEE"),background:nPri===v?t.acc:"white",color:nPri===v?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setNPri(v)}>{l}</button>)}</div></div>
-              <div className="pf"><label>Estimated time</label><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{[5,10,15,30,45,60].map(m=><button key={m} style={{padding:"5px 8px",borderRadius:9,border:"2px solid "+(nMin===m?t.acc:"#EEE"),background:nMin===m?t.acc:"white",color:nMin===m?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:11,cursor:"pointer"}} onClick={()=>setNMin(m)}>{m+"m"}</button>)}</div></div>
-            </>}
-            <div className="pf"><label>Location</label><div className="fr">{locs.map(l=><button key={l} style={{flexShrink:0,padding:"4px 8px",borderRadius:13,border:"2px solid "+(evLoc===l?t.acc:"#EEE"),background:evLoc===l?t.acc:"white",color:evLoc===l?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setEvLoc(l)}>{le(l)}{l}</button>)}</div></div>
-          </>}
-          <div style={{display:"flex",gap:7}}>
-            <button className="btn bp" style={{flex:2}} onClick={saveEdit}>Save changes</button>
-            <button className="btn bs" style={{flex:1}} onClick={()=>setEditing(false)}>Cancel</button>
-          </div>
-        </>}
-      </div>
-    </div>
-  );
-}
-
-function IncomeForm({onAdd,theme}){
-  const t=THEMES[theme]||THEMES.bloom;
-  const[label,setLabel]=useState("");
-  const[amount,setAmount]=useState("");
-  const[freq,setFreq]=useState("monthly");
-  const[dayOfMonth,setDayOfMonth]=useState("");
-  const[dayOfWeek,setDayOfWeek]=useState("Monday");
-  const[startDate,setStartDate]=useState("");
-  const add=()=>{
-    if(!label.trim()||!amount)return;
-    onAdd({id:"i"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:"",startDate:freq==="fortnightly"?startDate:""});
-    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");setStartDate("");
-  };
-  return(
-    <div style={{marginBottom:4}}>
-      <div style={{display:"flex",gap:3,marginBottom:3,flexWrap:"wrap"}}>
-        <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Salary)" value={label} onChange={e=>setLabel(e.target.value)}/>
-        <input className="pi" style={{width:60,fontSize:11}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
-        <select className="pi" style={{width:105,fontSize:11}} value={freq} onChange={e=>setFreq(e.target.value)}>
-          {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
-        </select>
-      </div>
-      {["monthly","annually"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
-        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day of month:</span>
-        <input className="pi" style={{width:55,fontSize:11}} type="number" min="1" max="31" placeholder="e.g. 25" value={dayOfMonth} onChange={e=>setDayOfMonth(e.target.value)}/>
-        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
-      </div>}
-      {["weekly","fortnightly"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
-        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day:</span>
-        <select className="pi" style={{flex:1,fontSize:11}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
-          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
-        </select>
-      </div>}
-      {freq==="fortnightly"&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
-        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Starting from:</span>
-        <input className="pi" style={{flex:1,fontSize:11}} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/>
-        <span style={{fontSize:9,color:"#AAA"}}>sets which week</span>
-      </div>}
-      <button className="btn bp bsm" onClick={add}>+ Add</button>
-    </div>
-  );
-}
-
-function CostForm({onAdd,theme}){
-  const t=THEMES[theme]||THEMES.bloom;
-  const[label,setLabel]=useState("");
-  const[amount,setAmount]=useState("");
-  const[freq,setFreq]=useState("monthly");
-  const[dayOfMonth,setDayOfMonth]=useState("");
-  const[dayOfWeek,setDayOfWeek]=useState("Monday");
-  const[startDate,setStartDate]=useState("");
-  const add=()=>{
-    if(!label.trim()||!amount)return;
-    onAdd({id:"c"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:"",startDate:freq==="fortnightly"?startDate:""});
-    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");setStartDate("");
-  };
-  return(
-    <div style={{marginBottom:4}}>
-      <div style={{display:"flex",gap:3,marginBottom:3,flexWrap:"wrap"}}>
-        <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Mortgage)" value={label} onChange={e=>setLabel(e.target.value)}/>
-        <input className="pi" style={{width:60,fontSize:11}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
-        <select className="pi" style={{width:105,fontSize:11}} value={freq} onChange={e=>setFreq(e.target.value)}>
-          {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
-        </select>
-      </div>
-      {["monthly","annually"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
-        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Due day:</span>
-        <input className="pi" style={{width:55,fontSize:11}} type="number" min="1" max="31" placeholder="e.g. 1" value={dayOfMonth} onChange={e=>setDayOfMonth(e.target.value)}/>
-        <span style={{fontSize:10,color:"#AAA"}}>→ calendar reminder</span>
-      </div>}
-      {["weekly","fortnightly"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
-        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day:</span>
-        <select className="pi" style={{flex:1,fontSize:11}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
-          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
-        </select>
-      </div>}
-      {freq==="fortnightly"&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
-        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Starting from:</span>
-        <input className="pi" style={{flex:1,fontSize:11}} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/>
-        <span style={{fontSize:9,color:"#AAA"}}>sets which week</span>
-      </div>}
-      <button className="btn bp bsm" onClick={add}>+ Add</button>
-    </div>
-  );
-}
-
-function OOIForm({onAdd}){
-  const[label,setLabel]=useState("");
-  const[amount,setAmount]=useState("");
-  const[date,setDate]=useState("");
-  const add=()=>{
-    if(!label.trim()||!amount)return;
-    onAdd({id:"oo"+Date.now(),label,amount:+amount,date});
-    setLabel("");setAmount("");setDate("");
-  };
-  return(
-    <div style={{display:"flex",gap:3,marginBottom:4,flexWrap:"wrap"}}>
-      <input className="pi" style={{flex:2,minWidth:70,fontSize:11}} placeholder="Label (e.g. Tax refund)" value={label} onChange={e=>setLabel(e.target.value)}/>
-      <input className="pi" style={{width:60,fontSize:11}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
-      <input className="pi" style={{width:115,fontSize:11}} type="date" value={date} onChange={e=>setDate(e.target.value)}/>
-      <button className="btn bp bsm" onClick={add}>+ Add</button>
-    </div>
-  );
-}
-
 function Onboarding({onComplete,theme}){
   const[step,setStep]=useState(0);
   const[name,setName]=useState("");
@@ -650,8 +383,7 @@ function Onboarding({onComplete,theme}){
   const[cycleDate,setCycleDate]=useState("");
   const[cycleLen,setCycleLen]=useState("");
   const th=THEMES[selTheme]||THEMES.bloom;
-  const TOTAL=5;
-
+  const TOTAL=4;
   const steps=[
     <div key="w">
       <div style={{fontSize:44,textAlign:"center",marginBottom:10}}>🧠</div>
@@ -662,13 +394,12 @@ function Onboarding({onComplete,theme}){
       ))}
       <button className="ob-nx" onClick={()=>setStep(1)}>Let's go!</button>
     </div>,
-
     <div key="who">
       <div style={{fontSize:36,textAlign:"center",marginBottom:9}}>👋</div>
       <div className="ob-t">About you</div>
-      <div className="ob-s">Helps BrainBloom personalise your experience. You can always change this later.</div>
+      <div className="ob-s">Helps BrainBloom personalise your experience.</div>
       <div className="pf"><label>Your name</label><input className="ob-in" style={{marginBottom:0}} placeholder="First name" value={name} onChange={e=>setName(e.target.value)}/></div>
-      <div className="pf" style={{marginTop:7}}><label>What do you do?</label><input className="ob-in" style={{marginBottom:0}} placeholder="e.g. Teacher, Student, Parent, Designer..." value={role} onChange={e=>setRole(e.target.value)}/></div>
+      <div className="pf" style={{marginTop:7}}><label>What do you do?</label><input className="ob-in" style={{marginBottom:0}} placeholder="e.g. Teacher, Student, Parent..." value={role} onChange={e=>setRole(e.target.value)}/></div>
       <div style={{marginTop:10}}>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Choose your theme</div>
         <div className="th-grid">{Object.entries(THEMES).map(([key,th2])=>(
@@ -678,11 +409,10 @@ function Onboarding({onComplete,theme}){
       <button className="ob-nx" onClick={()=>setStep(2)}>Next</button>
       <button className="ob-sk" onClick={()=>setStep(2)}>Skip</button>
     </div>,
-
     <div key="loc">
       <div style={{fontSize:36,textAlign:"center",marginBottom:9}}>📍</div>
       <div className="ob-t">Locations and your day</div>
-      <div className="ob-s">BrainBloom will only suggest household tasks when you're at home, work tasks when you're at work — it's smarter that way!</div>
+      <div className="ob-s">BrainBloom only suggests household tasks when you're at home, work tasks when you're at work.</div>
       <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",marginBottom:5}}>Where do you spend time?</div>
       <div style={{display:"flex",flexWrap:"wrap",marginBottom:9}}>
         {["Home","Work","School/College","Commute","Errands","Gym","Garden"].map(l=>(
@@ -708,15 +438,14 @@ function Onboarding({onComplete,theme}){
       </div>}
       <button className="ob-nx" disabled={locs.length===0} onClick={()=>setStep(3)}>Next</button>
     </div>,
-
     <div key="rf">
       <div style={{fontSize:36,textAlign:"center",marginBottom:9}}>⚙️</div>
       <div className="ob-t">Routines and features</div>
-      <div className="ob-s">Pre-filled with sensible defaults — edit anything that doesn't fit. You can change all of this anytime in Settings.</div>
+      <div className="ob-s">Pre-filled with sensible defaults — edit anything that doesn't fit.</div>
       <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",marginBottom:5}}>Morning routine</div>
       {mList.map((item,i)=>(
         <div key={item.id} style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
-          <input className="ob-in" style={{marginBottom:0,flex:1,fontSize:12}} value={item.l} onChange={e=>setMList(l=>l.map((x,j)=>j===i?{...x,l:e.target.value}:x))}/>
+          <input className="ob-in" style={{marginBottom:0,flex:1,fontSize:13}} value={item.l} onChange={e=>setMList(l=>l.map((x,j)=>j===i?{...x,l:e.target.value}:x))}/>
           <input className="ob-in" style={{marginBottom:0,width:44,fontSize:11}} type="number" min="1" value={item.t} onChange={e=>setMList(l=>l.map((x,j)=>j===i?{...x,t:+e.target.value}:x))}/>
           <span style={{fontSize:9,color:"#AAA",fontWeight:600,flexShrink:0}}>min</span>
           <button className="db" onClick={()=>setMList(l=>l.filter((_,j)=>j!==i))}>×</button>
@@ -726,40 +455,32 @@ function Onboarding({onComplete,theme}){
       <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",marginBottom:5}}>Evening routine</div>
       {eList.map((item,i)=>(
         <div key={item.id} style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
-          <input className="ob-in" style={{marginBottom:0,flex:1,fontSize:12}} value={item.l} onChange={e=>setEList(l=>l.map((x,j)=>j===i?{...x,l:e.target.value}:x))}/>
+          <input className="ob-in" style={{marginBottom:0,flex:1,fontSize:13}} value={item.l} onChange={e=>setEList(l=>l.map((x,j)=>j===i?{...x,l:e.target.value}:x))}/>
           <input className="ob-in" style={{marginBottom:0,width:44,fontSize:11}} type="number" min="1" value={item.t} onChange={e=>setEList(l=>l.map((x,j)=>j===i?{...x,t:+e.target.value}:x))}/>
           <span style={{fontSize:9,color:"#AAA",fontWeight:600,flexShrink:0}}>min</span>
           <button className="db" onClick={()=>setEList(l=>l.filter((_,j)=>j!==i))}>×</button>
         </div>
       ))}
       <button className="btn bs bsm" style={{marginBottom:9,fontSize:10}} onClick={()=>setEList(l=>[...l,{id:"e"+Date.now(),l:"",d:false,t:5}])}>+ Add step</button>
-      <div className="tog-row"><div><div className="tog-lbl">💰 Spending tracker</div><div className="tog-sub">Track income, bills and what's left to spend</div></div><button className={"tog"+(wantSpend?" on":"")} onClick={()=>setWantSpend(s=>!s)}/></div>
-      <div className="tog-row" style={{marginBottom:wantCycle?6:0}}><div><div className="tog-lbl">🌙 Cycle tracking</div><div className="tog-sub">Connect your cycle to mood, energy and planning</div></div><button className={"tog"+(wantCycle?" on":"")} onClick={()=>setWantCycle(s=>!s)}/></div>
+      <div className="tog-row"><div><div className="tog-lbl">💰 Spending tracker</div><div className="tog-sub">Track income, bills and daily spend</div></div><button className={"tog"+(wantSpend?" on":"")} onClick={()=>setWantSpend(s=>!s)}/></div>
+      <div className="tog-row" style={{marginBottom:wantCycle?6:0}}><div><div className="tog-lbl">🌙 Cycle tracking</div><div className="tog-sub">Connect your cycle to mood and energy</div></div><button className={"tog"+(wantCycle?" on":"")} onClick={()=>setWantCycle(s=>!s)}/></div>
       {wantCycle&&<div style={{background:"#F9F5FF",borderRadius:9,padding:"9px 11px",marginBottom:7,border:"1.5px solid #C77DFF33"}}>
-        <div style={{fontSize:10,fontWeight:700,color:"#9B5DE5",marginBottom:6}}>Cycle details — optional, add later in Settings if you prefer</div>
+        <div style={{fontSize:10,fontWeight:700,color:"#9B5DE5",marginBottom:6}}>Cycle details — optional</div>
         <div className="pf"><label>First day of last period</label><input className="ob-in" style={{marginBottom:0}} type="date" value={cycleDate} onChange={e=>setCycleDate(e.target.value)}/></div>
-        <div className="pf" style={{marginBottom:0}}><label>Cycle length (days)</label><input className="ob-in" style={{marginBottom:0}} type="number" min="21" max="45" placeholder="Not sure — we will use 28 days" value={cycleLen} onChange={e=>setCycleLen(e.target.value)}/></div>
+        <div className="pf" style={{marginBottom:0}}><label>Cycle length (days)</label><input className="ob-in" style={{marginBottom:0}} type="number" min="21" max="45" placeholder="Default: 28 days" value={cycleLen} onChange={e=>setCycleLen(e.target.value)}/></div>
       </div>}
-      <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD-specific features</div><div className="tog-sub">Aversion ratings, ADHD research tips, dreaded task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
+      <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD-specific features</div><div className="tog-sub">Aversion ratings, ADHD tips, task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
       <button className="ob-nx" onClick={()=>setStep(4)}>Next</button>
     </div>,
-
     <div key="done" style={{textAlign:"center"}}>
       <div style={{fontSize:52,marginBottom:9}}>🎉</div>
       <div className="ob-t" style={{fontSize:21}}>{"You're all set"+(name?", "+name:"")+"!"}</div>
       <div className="ob-s">Everything can be adjusted anytime in Settings.</div>
-      <div style={{background:"linear-gradient(135deg,#FFF4CC,#FFE5E5)",borderRadius:11,padding:12,marginBottom:13,textAlign:"left"}}>
-        <div style={{fontFamily:"Fredoka One",fontSize:12,color:"#FF6B6B",marginBottom:4}}>Your BrainBloom includes:</div>
-        {["📍 "+locs.slice(0,3).join(", ")+(locs.length>3?" +":""),"☀️ "+mList.filter(x=>x.l).length+"-step morning routine","🌙 "+eList.filter(x=>x.l).length+"-step evening routine",wantSpend?"💰 Spending and budget tracker":"",wantCycle?"🌙 Cycle tracking":"",wantADHD?"🧠 ADHD-specific features":"🧠 General productivity mode","🎨 "+(THEMES[selTheme]?THEMES[selTheme].name:"Bloom")+" theme"].filter(Boolean).map((f,i)=>(
-          <div key={i} style={{fontSize:11,fontWeight:600,color:"#444",marginBottom:2}}>{"✓ "+f}</div>
-        ))}
-      </div>
       <button className="ob-nx" onClick={()=>onComplete({name,role,locs,mList:mList.filter(x=>x.l),eList:eList.filter(x=>x.l),wantCycle,wantSpend,wantADHD,theme:selTheme,taskFrom,taskTo,hasCommute,commuteMins,commuteEveMins,cycleDate,cycleLen:cycleLen?+cycleLen:28})}>
         Start using BrainBloom 🧠
       </button>
     </div>,
   ];
-
   return(
     <div className="ob">
       <style>{makeCSS(THEMES[selTheme]||THEMES.bloom)}</style>
@@ -771,40 +492,273 @@ function Onboarding({onComplete,theme}){
   );
 }
 
+function IncomeForm({onAdd,theme}){
+  const[label,setLabel]=useState("");
+  const[amount,setAmount]=useState("");
+  const[freq,setFreq]=useState("monthly");
+  const[dayOfMonth,setDayOfMonth]=useState("");
+  const[dayOfWeek,setDayOfWeek]=useState("Monday");
+  const[startDate,setStartDate]=useState("");
+  const add=()=>{
+    if(!label.trim()||!amount)return;
+    onAdd({id:"i"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:"",startDate:freq==="fortnightly"?startDate:""});
+    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");setStartDate("");
+  };
+  return(
+    <div style={{marginBottom:4}}>
+      <div style={{display:"flex",gap:3,marginBottom:3,flexWrap:"wrap"}}>
+        <input className="pi" style={{flex:2,minWidth:70,fontSize:13}} placeholder="Label (e.g. Salary)" value={label} onChange={e=>setLabel(e.target.value)}/>
+        <input className="pi" style={{width:60,fontSize:13}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
+        <select className="pi" style={{width:105,fontSize:13}} value={freq} onChange={e=>setFreq(e.target.value)}>
+          {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
+        </select>
+      </div>
+      {["monthly","annually"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day of month:</span>
+        <input className="pi" style={{width:55,fontSize:13}} type="number" min="1" max="31" placeholder="e.g. 25" value={dayOfMonth} onChange={e=>setDayOfMonth(e.target.value)}/>
+        <span style={{fontSize:10,color:"#AAA"}}>→ calendar</span>
+      </div>}
+      {["weekly","fortnightly"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day:</span>
+        <select className="pi" style={{flex:1,fontSize:13}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
+          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
+        </select>
+      </div>}
+      {freq==="fortnightly"&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Starting:</span>
+        <input className="pi" style={{flex:1,fontSize:13}} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/>
+      </div>}
+      <button className="btn bp bsm" onClick={add}>+ Add</button>
+    </div>
+  );
+}
+
+function CostForm({onAdd,theme}){
+  const[label,setLabel]=useState("");
+  const[amount,setAmount]=useState("");
+  const[freq,setFreq]=useState("monthly");
+  const[dayOfMonth,setDayOfMonth]=useState("");
+  const[dayOfWeek,setDayOfWeek]=useState("Monday");
+  const[startDate,setStartDate]=useState("");
+  const add=()=>{
+    if(!label.trim()||!amount)return;
+    onAdd({id:"c"+Date.now(),label,amount:+amount,freq,dayOfMonth:["monthly","annually"].includes(freq)?dayOfMonth:"",dayOfWeek:["weekly","fortnightly"].includes(freq)?dayOfWeek:"",startDate:freq==="fortnightly"?startDate:""});
+    setLabel("");setAmount("");setFreq("monthly");setDayOfMonth("");setDayOfWeek("Monday");setStartDate("");
+  };
+  return(
+    <div style={{marginBottom:4}}>
+      <div style={{display:"flex",gap:3,marginBottom:3,flexWrap:"wrap"}}>
+        <input className="pi" style={{flex:2,minWidth:70,fontSize:13}} placeholder="Label (e.g. Mortgage)" value={label} onChange={e=>setLabel(e.target.value)}/>
+        <input className="pi" style={{width:60,fontSize:13}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
+        <select className="pi" style={{width:105,fontSize:13}} value={freq} onChange={e=>setFreq(e.target.value)}>
+          {["weekly","fortnightly","monthly","annually"].map(f=><option key={f}>{f}</option>)}
+        </select>
+      </div>
+      {["monthly","annually"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Due day:</span>
+        <input className="pi" style={{width:55,fontSize:13}} type="number" min="1" max="31" placeholder="e.g. 1" value={dayOfMonth} onChange={e=>setDayOfMonth(e.target.value)}/>
+        <span style={{fontSize:10,color:"#AAA"}}>→ calendar</span>
+      </div>}
+      {["weekly","fortnightly"].includes(freq)&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Day:</span>
+        <select className="pi" style={{flex:1,fontSize:13}} value={dayOfWeek} onChange={e=>setDayOfWeek(e.target.value)}>
+          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d=><option key={d}>{d}</option>)}
+        </select>
+      </div>}
+      {freq==="fortnightly"&&<div style={{display:"flex",gap:3,marginBottom:3,alignItems:"center"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#AAA",flexShrink:0}}>Starting:</span>
+        <input className="pi" style={{flex:1,fontSize:13}} type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/>
+      </div>}
+      <button className="btn bp bsm" onClick={add}>+ Add</button>
+    </div>
+  );
+}
+
+function OOIForm({onAdd}){
+  const[label,setLabel]=useState("");
+  const[amount,setAmount]=useState("");
+  const[date,setDate]=useState("");
+  const add=()=>{
+    if(!label.trim()||!amount)return;
+    onAdd({id:"oo"+Date.now(),label,amount:+amount,date});
+    setLabel("");setAmount("");setDate("");
+  };
+  return(
+    <div style={{display:"flex",gap:3,marginBottom:4,flexWrap:"wrap"}}>
+      <input className="pi" style={{flex:2,minWidth:70,fontSize:13}} placeholder="Label (e.g. Tax refund)" value={label} onChange={e=>setLabel(e.target.value)}/>
+      <input className="pi" style={{width:60,fontSize:13}} type="number" placeholder="€" value={amount} onChange={e=>setAmount(e.target.value)}/>
+      <input className="pi" style={{width:115,fontSize:13}} type="date" value={date} onChange={e=>setDate(e.target.value)}/>
+      <button className="btn bp bsm" onClick={add}>+ Add</button>
+    </div>
+  );
+}
+
+function TaskCard({t2,onToggle,onAv,onExpand,expandedId,onEdit,onDelete,lc,le,wantADHD,t}){
+  const av=AVS[t2.av||0];
+  const du=t2.deadline?Math.ceil((new Date(t2.deadline+"T12:00:00")-new Date())/86400000):null;
+  const rdone=t2.recur&&t2.recur!=="none"&&recurDoneThisWeek(t2);
+  const isExp=expandedId===t2.id;
+  const[editTl,setEditTl]=useState(t2.tl);
+  const[editMn,setEditMn]=useState(t2.mn);
+  const[editPr,setEditPr]=useState(t2.pr||"medium");
+  return(
+    <div style={{marginBottom:5}}>
+      <div className="tc" style={{borderLeftColor:lc(t2.lo),opacity:rdone?.55:1,cursor:"pointer"}} onClick={()=>onExpand(isExp?null:t2.id)}>
+        <div className={"ck"+(t2.dn||rdone?" on":"")} onClick={e=>{e.stopPropagation();if(!rdone)onToggle(t2.id);}}>{(t2.dn||rdone)&&<span style={{color:"white",fontSize:8}}>✓</span>}</div>
+        <div style={{flex:1}}>
+          <div className={"tt"+(t2.dn||rdone?" dn":"")}>{t2.tl}</div>
+          <div className="tm">
+            <span className="tg tglc" style={{background:lc(t2.lo)}}>{le(t2.lo)}{t2.lo}</span>
+            <span className="tg tgt">⏱ {t2.mn}m</span>
+            {t2.recur&&t2.recur!=="none"&&<span className="tg" style={{background:"#E8F0FF",color:"#4D96FF"}}>🔁 {t2.recur}</span>}
+            {du!==null&&du<=3&&!t2.dn&&!rdone&&<span className="tg" style={{background:"#FFE5E5",color:"#FF6B6B"}}>{du===0?"Due today":du<0?"Overdue":"Due in "+du+"d"}</span>}
+            {wantADHD&&(t2.av||0)>=3&&!rdone&&<span className="tg" style={{background:av.c+"22",color:av.c}}>{av.e}</span>}
+          </div>
+        </div>
+        <span style={{fontSize:11,color:"#BBB",transition:"transform .2s",display:"inline-block",transform:isExp?"rotate(180deg)":"none"}}>▾</span>
+      </div>
+      {isExp&&<div className="inline-edit">
+        {wantADHD&&<><div className="sl">How do you feel about this?</div>
+        <div className="av" style={{marginBottom:7}}>{AVS.map(a=><button key={a.s} className="avb" style={(t2.av||0)===a.s?{background:a.c,borderColor:a.c,color:"white"}:{}} onClick={()=>onAv(t2.id,a.s)}>{a.e}<span style={{fontSize:8}}>{a.l}</span></button>)}</div></>}
+        <div className="pf"><label>Title</label><input className="pi" value={editTl} onChange={e=>setEditTl(e.target.value)}/></div>
+        <div style={{display:"flex",gap:6,marginBottom:7}}>
+          <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Priority</label>
+            <div style={{display:"flex",gap:3}}>{[["high","🔴"],["medium","🟡"],["low","🟢"]].map(([v,e])=><button key={v} style={{flex:1,padding:"4px 2px",borderRadius:7,border:"2px solid "+(editPr===v?t.acc:"#EEE"),background:editPr===v?t.acc:"white",color:editPr===v?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setEditPr(v)}>{e}</button>)}</div>
+          </div>
+          <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Minutes</label>
+            <input className="pi" type="number" min="1" value={editMn} onChange={e=>setEditMn(+e.target.value)}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <button className="btn bp bsm" style={{flex:2}} onClick={()=>{onEdit(t2.id,{tl:editTl,mn:editMn,pr:editPr});onExpand(null);}}>Save</button>
+          <button className="btn bs bsm" style={{flex:1,color:"#FF6B6B"}} onClick={()=>{onDelete(t2.id);onExpand(null);}}>Delete</button>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+function DayPanel({iso,compact,calEvents,tasks,logs,habitLog,lps,cLen,locs,wantCycle,setDetailItem,handleDeleteEv,t}){
+  const[expandedEvId,setExpandedEvId]=useState(null);
+  const lc=(lo)=>getLC(lo,locs);
+  const le=(lo)=>getLE(lo,locs);
+  const cDay=getCDay(lps,cLen);
+  const getCPhaseForDay=(iso2)=>{
+    if(!lps||!cDay)return null;
+    const diff=Math.floor((new Date(iso2+"T12:00:00")-new Date())/86400000);
+    return getCPhase(((cDay+diff-1+cLen*4)%cLen)+1);
+  };
+  const WDAYS_ARR=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const getFinEventsForDay=(iso2)=>{
+    const evs=[];
+    const d=new Date(iso2+"T12:00:00");
+    const dayNum=d.getDate();
+    const dayName=WDAYS_ARR[d.getDay()];
+    calEvents.filter(ev=>ev.finType).forEach(()=>{});
+    return evs;
+  };
+  const allEventsForDay=[...calEvents.filter(ev=>eventOccursOn(ev,iso)&&!ev.finType)];
+  const allDay=allEventsForDay.filter(ev=>ev.allDay).sort((a,b)=>(a.title||"").localeCompare(b.title||""));
+  const timed=allEventsForDay.filter(ev=>!ev.allDay).sort((a,b)=>(a.startTime||"").localeCompare(b.startTime||""));
+  const dayTasks=tasks.filter(t2=>t2.deadline===iso&&!t2.dn);
+  const dayLog=logs.find(l=>l.dt===iso);
+  const dayHabits=habitLog.find(h=>h.dt===iso);
+  const ph=getCPhaseForDay(iso);
+  const isPast=iso<todayISO();
+  const isFuture=iso>todayISO();
+  const isToday=iso===todayISO();
+  const slice=compact?3:99;
+  return(
+    <div style={{animation:"sli .25s ease"}}>
+      {wantCycle&&ph&&<div style={{background:ph.c+"18",borderRadius:8,padding:"5px 8px",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontSize:14}}>{ph.e}</span>
+        <div><div style={{fontSize:10,fontWeight:800,color:ph.c}}>{ph.l+" Phase"}</div><div style={{fontSize:9,fontWeight:600,color:"#666"}}>{ph.energy+" · "+ph.tips[0]}</div></div>
+      </div>}
+      {allDay.map(ev=>(
+        <div key={ev.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 7px",borderRadius:7,background:lc(ev.loc)+"22",borderLeft:"3px solid "+lc(ev.loc),marginBottom:3,cursor:"pointer"}} onClick={()=>setDetailItem&&setDetailItem({item:ev,type:ev.cost?"financial":"event",iso})}>
+          <span style={{fontSize:10,fontWeight:700,color:lc(ev.loc),flex:1}}>{ev.title}{ev.cost?" · €"+ev.cost.amount:""}</span>
+          <span style={{fontSize:9,color:"#BBB"}}>›</span>
+        </div>
+      ))}
+      {timed.slice(0,slice).map(ev=>{
+        const isExp=expandedEvId===ev.id;
+        return(
+          <div key={ev.id}>
+            <div className="day-ev" style={{background:lc(ev.loc)+"12",borderLeftColor:lc(ev.loc)}} onClick={()=>setExpandedEvId(isExp?null:ev.id)}>
+              <div style={{fontSize:9,fontWeight:700,color:"#AAA",width:36,flexShrink:0,lineHeight:1.3}}>{ev.startTime}{ev.endTime?<><br/>{ev.endTime}</>:null}</div>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"Fredoka One",fontSize:11,color:lc(ev.loc)}}>{ev.title}</div>
+                <div style={{fontSize:9,color:"#AAA",fontWeight:600}}>{le(ev.loc)}{ev.loc}{ev.recur&&ev.recur!=="none"?" · 🔁 "+ev.recur:""}{ev.cost?" · 💰 €"+ev.cost.amount:""}</div>
+              </div>
+              <span style={{fontSize:11,color:"#BBB",transition:"transform .2s",display:"inline-block",transform:isExp?"rotate(180deg)":"none"}}>▾</span>
+            </div>
+            {isExp&&<div className="inline-edit" style={{marginBottom:5}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:13,color:t.dark,marginBottom:7}}>{ev.title}</div>
+              {ev.startTime&&<div style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:3}}>🕐 {ev.startTime}{ev.endTime?" – "+ev.endTime:""}</div>}
+              <div style={{fontSize:11,fontWeight:600,color:lc(ev.loc),marginBottom:7}}>{le(ev.loc)}{ev.loc}</div>
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn bp bsm" style={{flex:2}} onClick={()=>{setDetailItem&&setDetailItem({item:ev,type:"event",iso});setExpandedEvId(null);}}>✏️ Edit</button>
+                <button className="btn bs bsm" style={{flex:1,color:"#FF6B6B"}} onClick={()=>{handleDeleteEv&&handleDeleteEv(ev,iso);setExpandedEvId(null);}}>🗑️ Delete</button>
+              </div>
+            </div>}
+          </div>
+        );
+      })}
+      {compact&&timed.length>3&&<div style={{fontSize:9,color:"#AAA",fontWeight:600,cursor:"pointer"}} onClick={()=>{}}>{"+"+(timed.length-3)+" more — tap Calendar tab"}</div>}
+      {dayTasks.length>0&&<><div className="sl">Tasks due</div>{dayTasks.map(t2=><div key={t2.id} style={{background:lc(t2.lo)+"12",borderRadius:8,padding:"6px 9px",marginBottom:4,borderLeft:"3px solid "+lc(t2.lo),fontSize:11,fontWeight:700}}>{t2.tl} · {t2.mn}m</div>)}</>}
+      {isPast&&dayLog&&<><div className="sl">Log</div>
+        <div style={{padding:"6px 8px",background:"#F9F9F9",borderRadius:8}}>
+          {dayLog.mood&&<div style={{fontSize:10,fontWeight:600,marginBottom:2}}>{dayLog.mood.e+" "+dayLog.mood.l}{dayLog.energy?" · "+dayLog.energy.e+" "+dayLog.energy.l:""}</div>}
+          {dayLog.syms&&dayLog.syms.length>0&&<div style={{fontSize:9,color:"#AAA",fontWeight:600,marginBottom:2}}>🩺 {dayLog.syms.join(", ")}</div>}
+          {dayLog.notes&&<div style={{fontSize:9,fontWeight:600,color:"#555",fontStyle:"italic"}}>"{dayLog.notes}"</div>}
+        </div>
+      </>}
+      {allDay.length===0&&timed.length===0&&dayTasks.length===0&&!dayLog&&(
+        <div style={{fontSize:10,color:"#CCC",fontWeight:600,padding:"4px 0",textAlign:"center"}}>{isFuture?"Nothing planned — tap + Add":isToday?"Nothing scheduled — tap + Add":"Nothing logged"}</div>
+      )}
+    </div>
+  );
+}
+
 function VoiceSheet({onClose,onResult,locs,profName,role,theme}){
   const[state,setState]=useState("idle");
   const[trans,setTrans]=useState("");
   const[result,setResult]=useState(null);
+  const[fallback,setFallback]=useState(false);
+  const[fbCat,setFbCat]=useState(null);
   const recRef=useRef(null);
   const t=THEMES[theme]||THEMES.bloom;
   const start=()=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR){alert("Voice recognition works best on Chrome for Android or desktop.");return;}
+    if(!SR){setFallback(true);return;}
     const r=new SR();r.continuous=true;r.interimResults=true;r.lang="en";
     let ft="";
     r.onresult=e=>{let it="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)ft+=e.results[i][0].transcript+" ";else it+=e.results[i][0].transcript;}setTrans(ft+it);};
-    r.onerror=()=>setState("idle");
+    r.onerror=()=>{setState("idle");setFallback(true);};
     recRef.current=r;r.start();setState("rec");setTrans("");setResult(null);
   };
   const stop=()=>{if(recRef.current){recRef.current.stop();recRef.current=null;}setState("proc");setTimeout(()=>proc(trans),700);};
   const proc=async(text)=>{
-    if(!text.trim()){setState("idle");return;}
+    if(!text.trim()){setFallback(true);setState("idle");return;}
     try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",max_tokens:900,
-        system:"Personal planner. User: "+(profName||"someone")+", "+(role||"professional")+". Locations: "+locs.join(", ")+". Return ONLY valid JSON no markdown: {\"tasks\":[{\"tl\":\"title\",\"lo\":\""+( locs[0]||"Home")+"\",\"pr\":\"medium\",\"mn\":15,\"av\":0,\"recur\":\"none\"}],\"events\":[{\"title\":\"title\",\"date\":\"YYYY-MM-DD\",\"startTime\":\"09:00\",\"allDay\":false}],\"spends\":[{\"am\":0,\"ca\":\"other\",\"lb\":\"label\"}],\"symptoms\":[],\"habits\":[]}",
+        model:"claude-sonnet-4-20250514",max_tokens:1000,
+        system:"Personal planner. User: "+(profName||"someone")+". Locations: "+locs.join(", ")+". Return ONLY valid JSON no markdown: {\"tasks\":[{\"tl\":\"title\",\"lo\":\""+( locs[0]||"Home")+"\",\"pr\":\"medium\",\"mn\":15,\"av\":0,\"recur\":\"none\"}],\"events\":[{\"title\":\"title\",\"date\":\"YYYY-MM-DD\",\"startTime\":\"09:00\",\"endTime\":\"10:00\",\"allDay\":false}],\"spends\":[{\"am\":0,\"ca\":\"other\",\"lb\":\"label\"}],\"symptoms\":[],\"habits\":[]}",
         messages:[{role:"user",content:"Voice dump: \""+text+"\""}]
       })});
       const data=await res.json();
       const textBlock=data.content&&data.content.find(b=>b.type==="text");
-      if(!textBlock){setResult({tasks:[],notes:trans,habits:[]});setState("done");return;}
+      if(!textBlock){setResult({tasks:[],events:[],spends:[],symptoms:[],habits:[],notes:text});setState("done");return;}
       const raw=textBlock.text||"{}";
       const cleaned=raw.replace(/```json/g,"").replace(/```/g,"").trim();
       const parsed=JSON.parse(cleaned);
-      setResult({tasks:parsed.tasks||[],events:parsed.events||[],spends:parsed.spends||[],symptoms:parsed.symptoms||[],habits:parsed.habits||[]});
-    }catch{setResult({tasks:[],notes:text,habits:[]});}
-    setState("done");
+      const r2={tasks:parsed.tasks||[],events:parsed.events||[],spends:parsed.spends||[],symptoms:parsed.symptoms||[],habits:parsed.habits||[]};
+      const hasContent=r2.tasks.length||r2.events.length||r2.spends.length||r2.symptoms.length||r2.habits.length;
+      if(!hasContent){setFallback(true);setState("idle");return;}
+      setResult(r2);setState("done");
+    }catch(err){setFallback(true);setState("idle");}
   };
+  const CATS=[{id:"task",e:"✅",l:"Task / To-Do"},{id:"event",e:"📅",l:"Event"},{id:"symptom",e:"🩺",l:"Symptom"},{id:"spend",e:"💰",l:"Spend"},{id:"habit",e:"🌿",l:"Habit"}];
   return(
     <>
       <div className="voverlay" onClick={onClose}/>
@@ -813,63 +767,130 @@ function VoiceSheet({onClose,onResult,locs,profName,role,theme}){
           <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>🎙️ Voice Dump</div>
           <button className="db" onClick={onClose}>×</button>
         </div>
-        {state==="idle"&&<>
-          <p style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:11,lineHeight:1.5}}>Dump everything — tasks, events, symptoms, spends. I will sort it all out.</p>
-          <button style={{width:"100%",padding:13,background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white",border:"none",borderRadius:11,fontFamily:"Fredoka One",fontSize:15,cursor:"pointer"}} onClick={start}>🎙️ Tap to start</button>
-        </>}
-        {state==="rec"&&<>
-          <div style={{textAlign:"center",padding:"7px 0"}}>
-            <div style={{width:58,height:58,borderRadius:"50%",background:"linear-gradient(135deg,#FF0000,#FF6B6B)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,margin:"0 auto 8px"}}>⏹️</div>
-            <div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark}}>Listening — tap to stop</div>
+        {fallback&&<>
+          <div style={{background:"#F9F5FF",borderRadius:9,padding:"9px 11px",marginBottom:11,border:"1.5px solid #C77DFF44"}}>
+            <div style={{fontFamily:"Fredoka One",fontSize:13,color:"#C77DFF",marginBottom:2}}>Let me help you add this manually</div>
+            <p style={{fontSize:11,fontWeight:600,color:"#555"}}>What would you like to add?</p>
           </div>
-          {trans&&<div style={{background:"#F9F5FF",border:"2px solid #C77DFF",borderRadius:10,padding:10,fontSize:11,fontWeight:600,fontStyle:"italic",marginTop:8}}>"{trans}"</div>}
-          <button style={{width:"100%",padding:11,background:"#F5F5F5",color:"#666",border:"none",borderRadius:10,fontFamily:"Fredoka One",fontSize:14,cursor:"pointer",marginTop:10}} onClick={stop}>Stop and organise</button>
+          {!fbCat&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+            {CATS.map(c=><button key={c.id} style={{padding:"11px 7px",borderRadius:11,border:"2px solid #EEE",background:t.card,fontFamily:"Nunito",fontWeight:700,fontSize:12,cursor:"pointer",textAlign:"center",color:t.dark}} onClick={()=>setFbCat(c.id)}>
+              <div style={{fontSize:20,marginBottom:3}}>{c.e}</div>{c.l}
+            </button>)}
+          </div>}
+          {fbCat==="task"&&<FallbackTaskForm trans={trans} onAdd={(tk)=>{onResult({tasks:[tk],events:[],spends:[],symptoms:[],habits:[]});onClose();}} t={t} locs={locs}/>}
+          {fbCat==="event"&&<FallbackEventForm trans={trans} onAdd={(ev)=>{onResult({tasks:[],events:[ev],spends:[],symptoms:[],habits:[]});onClose();}} t={t}/>}
+          {fbCat==="spend"&&<FallbackSpendForm trans={trans} onAdd={(sp)=>{onResult({tasks:[],events:[],spends:[sp],symptoms:[],habits:[]});onClose();}} t={t}/>}
+          {fbCat==="symptom"&&<div style={{marginTop:7}}>
+            <div className="sg">{SYMPTOMS.map(s=>{const[sel,setSel]=[useState(false)[0],useState(false)[1]];return<button key={s} className={"sc"} style={{marginBottom:4}} onClick={()=>{onResult({tasks:[],events:[],spends:[],symptoms:[s],habits:[]});onClose();}}>{s}</button>;})}</div>
+          </div>}
+          {fbCat&&<button className="btn bs bsm" style={{marginTop:7}} onClick={()=>setFbCat(null)}>← Back</button>}
         </>}
-        {state==="proc"&&<div style={{textAlign:"center",padding:16}}><div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark}}>Organising your thoughts...</div></div>}
-        {state==="done"&&result&&<>
-          <div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark,marginBottom:8}}>Here is what I found:</div>
-          {result.symptoms&&result.symptoms.length>0&&<div style={{background:"#FFF0F0",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>🩺 {result.symptoms.join(", ")}</div>}
-          {result.habits&&result.habits.length>0&&<div style={{background:"#E8F8EC",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>🌿 {result.habits.join(", ")}</div>}
-          {result.spends&&result.spends.map((s,i)=><div key={i} style={{background:"#FFF0E0",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>💰 {s.lb}: €{s.am}</div>)}
-          {result.events&&result.events.map((ev,i)=><div key={i} style={{background:"#E8F0FF",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>📅 {ev.title} — {ev.date}</div>)}
-          {result.tasks&&result.tasks.length>0&&<><div className="sl">Tasks found</div>{result.tasks.map((tk,i)=><div key={i} style={{background:"#F5F5F5",borderRadius:8,padding:"7px 9px",marginBottom:4,borderLeft:"3px solid "+t.acc,fontSize:11,fontWeight:600}}>📋 {tk.tl} — {tk.lo} · {tk.mn}m</div>)}</>}
-          <div style={{display:"flex",gap:6,marginTop:8}}>
-            <button className="btn bp" style={{flex:1}} onClick={()=>{onResult(result);onClose();}}>Add to app</button>
-            <button className="btn bs" onClick={onClose}>Discard</button>
-          </div>
+        {!fallback&&<>
+          {state==="idle"&&<>
+            <p style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:11,lineHeight:1.5}}>Dump everything — tasks, events, symptoms, spends. I will sort it all out.</p>
+            <button style={{width:"100%",padding:13,background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white",border:"none",borderRadius:11,fontFamily:"Fredoka One",fontSize:15,cursor:"pointer"}} onClick={start}>🎙️ Tap to start</button>
+            <button className="btn bs" style={{width:"100%",marginTop:8}} onClick={()=>setFallback(true)}>Add manually instead</button>
+          </>}
+          {state==="rec"&&<>
+            <div style={{textAlign:"center",padding:"7px 0"}}>
+              <div style={{width:58,height:58,borderRadius:"50%",background:"linear-gradient(135deg,#FF0000,#FF6B6B)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,margin:"0 auto 8px"}}>⏹️</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark}}>Listening — tap to stop</div>
+            </div>
+            {trans&&<div style={{background:"#F9F5FF",border:"2px solid #C77DFF",borderRadius:10,padding:10,fontSize:11,fontWeight:600,fontStyle:"italic",marginTop:8}}>"{trans}"</div>}
+            <button style={{width:"100%",padding:11,background:"#F5F5F5",color:"#666",border:"none",borderRadius:10,fontFamily:"Fredoka One",fontSize:14,cursor:"pointer",marginTop:10}} onClick={stop}>Stop and organise</button>
+          </>}
+          {state==="proc"&&<div style={{textAlign:"center",padding:16}}><div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark}}>Organising your thoughts...</div></div>}
+          {state==="done"&&result&&<>
+            <div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark,marginBottom:8}}>Here is what I found:</div>
+            {result.symptoms&&result.symptoms.length>0&&<div style={{background:"#FFF0F0",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>🩺 {result.symptoms.join(", ")}</div>}
+            {result.habits&&result.habits.length>0&&<div style={{background:"#E8F8EC",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>🌿 {result.habits.join(", ")}</div>}
+            {result.spends&&result.spends.map((s,i)=><div key={i} style={{background:"#FFF0E0",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>💰 {s.lb}: €{s.am}</div>)}
+            {result.events&&result.events.map((ev,i)=><div key={i} style={{background:"#E8F0FF",borderRadius:8,padding:"6px 9px",marginBottom:5,fontSize:11,fontWeight:600}}>📅 {ev.title} — {ev.date}</div>)}
+            {result.tasks&&result.tasks.length>0&&<><div className="sl">Tasks found</div>{result.tasks.map((tk,i)=><div key={i} style={{background:"#F5F5F5",borderRadius:8,padding:"7px 9px",marginBottom:4,borderLeft:"3px solid "+t.acc,fontSize:11,fontWeight:600}}>📋 {tk.tl} — {tk.lo} · {tk.mn}m</div>)}</>}
+            <div style={{display:"flex",gap:6,marginTop:8}}>
+              <button className="btn bp" style={{flex:1}} onClick={()=>{onResult(result);onClose();}}>Add to app</button>
+              <button className="btn bs" onClick={onClose}>Discard</button>
+            </div>
+          </>}
         </>}
       </div>
     </>
   );
 }
 
-function FocusSheet({onClose,energy,tasks,spotifyUrl,theme}){
+function FallbackTaskForm({trans,onAdd,t,locs}){
+  const[tl,setTl]=useState(trans||"");
+  const[lo,setLo]=useState(locs[0]||"Home");
+  const[mn,setMn]=useState(15);
+  const lc=(lo2)=>getLC(lo2,locs);
+  const le=(lo2)=>getLE(lo2,locs);
+  return(
+    <div style={{marginTop:9}}>
+      <div className="pf"><label>Task</label><input className="pi" value={tl} onChange={e=>setTl(e.target.value)}/></div>
+      <div className="fr">{locs.map(l=><button key={l} className={"fc"+(lo===l?" on":"")} onClick={()=>setLo(l)}>{le(l)}{l}</button>)}</div>
+      <div style={{display:"flex",gap:3,marginBottom:9,flexWrap:"wrap"}}>{[5,10,15,30,45,60].map(m=><button key={m} className={"tc2"+(mn===m?" on":"")} style={{padding:"5px 8px",borderRadius:9,border:"2px solid "+(mn===m?t.acc:"#EEE"),background:mn===m?t.acc:"white",color:mn===m?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:11,cursor:"pointer"}} onClick={()=>setMn(m)}>{m}m</button>)}</div>
+      <button className="btn bp" style={{width:"100%"}} onClick={()=>onAdd({id:"fb"+Date.now(),tl,lo,pr:"medium",mn,dn:false,ov:false,av:0,recur:"none",deadline:null,lastDone:null})}>Add Task ✓</button>
+    </div>
+  );
+}
+
+function FallbackEventForm({trans,onAdd,t}){
+  const[title,setTitle]=useState(trans||"");
+  const[date,setDate]=useState(todayISO());
+  const[startTime,setStartTime]=useState("09:00");
+  const[endTime,setEndTime]=useState("10:00");
+  return(
+    <div style={{marginTop:9}}>
+      <div className="pf"><label>Event</label><input className="pi" value={title} onChange={e=>setTitle(e.target.value)}/></div>
+      <div className="pf"><label>Date</label><input className="pi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+      <div style={{display:"flex",gap:7,marginBottom:9}}>
+        <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>{setStartTime(e.target.value);const[h,m]=e.target.value.split(":").map(Number);setEndTime(String((h+1)%24).padStart(2,"0")+":"+String(m).padStart(2,"0"));}}/></div>
+        <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
+      </div>
+      <button className="btn bp" style={{width:"100%"}} onClick={()=>onAdd({id:"fbe"+Date.now(),title,date,startTime,endTime,allDay:false,loc:"Home",recur:"none",days:[],exceptions:[],endDate:null})}>Add Event ✓</button>
+    </div>
+  );
+}
+
+function FallbackSpendForm({trans,onAdd,t}){
+  const[am,setAm]=useState("");
+  const[lb,setLb]=useState(trans||"");
+  const[ca,setCa]=useState("other");
+  return(
+    <div style={{marginTop:9}}>
+      <div style={{display:"flex",gap:6,marginBottom:7}}>
+        <input className="ai" type="number" placeholder="€" value={am} onChange={e=>setAm(e.target.value)} style={{width:80,flex:"none"}}/>
+        <input className="ai" placeholder="What was it?" value={lb} onChange={e=>setLb(e.target.value)}/>
+      </div>
+      <div className="fr" style={{marginBottom:9}}>{SCATS.map(c=><button key={c.id} className={"fc"+(ca===c.id?" on":"")} style={ca===c.id?{background:c.c,borderColor:c.c}:{}} onClick={()=>setCa(c.id)}>{c.e+" "+c.l}</button>)}</div>
+      <button className="btn bp" style={{width:"100%"}} onClick={()=>{if(!am)return;onAdd({id:"fps"+Date.now(),am:+am,ca,lb:lb||(SCATS.find(c=>c.id===ca)||SCATS[SCATS.length-1]).l,dt:new Date().toISOString()});}}>Log Spend ✓</button>
+    </div>
+  );
+}
+
+function FocusSheet({onClose,energy,tasks,spotifyUrl,theme,wantCycle,cPhase,selectedTaskAv}){
   const[tSec,setTSec]=useState(0);
   const[tTot,setTTot]=useState(0);
   const[tRun,setTRun]=useState(false);
   const[tPk,setTPk]=useState(null);
   const[musOn,setMusOn]=useState(false);
-  const[fSug,setFSug]=useState([]);
   const tiRef=useRef(null);
   const t=THEMES[theme]||THEMES.bloom;
   const el=energy?energy.n:3;
-  const vibes={1:{l:"Deep Focus",c:"#4D96FF",e:"🎹"},2:{l:"Lo-Fi Chill",c:"#C77DFF",e:"🎵"},3:{l:"Steady Flow",c:"#6BCB77",e:"🌿"},4:{l:"Feel Good",c:"#FFD93D",e:"✨"},5:{l:"Power Mode",c:"#FF6B6B",e:"🚀"}};
-  const getVibe=(taskAv)=>{
-    // High aversion task = motivating music regardless of energy
-    if(taskAv&&taskAv>=3)return vibes[5];
-    // Evening = calmer
-    const h=new Date().getHours();
-    const isLateEve=h>=21||h<6;
-    if(isLateEve)return vibes[1];
-    // Cycle phase adjustments
+  const h=new Date().getHours();
+  const isLateEve=h>=21||h<6;
+  const getVibe=()=>{
+    if(selectedTaskAv&&selectedTaskAv>=3)return{l:"Power Mode",c:"#FF6B6B",e:"🚀",q:"pumped up focus"};
+    if(isLateEve)return{l:"Deep Focus",c:"#4D96FF",e:"🎹",q:"deep focus evening"};
     if(wantCycle&&cPhase){
-      if(cPhase.id==="m")return vibes[Math.min(el,2)];
-      if(cPhase.id==="l"&&el<=2)return vibes[1];
-      if(cPhase.id==="o")return vibes[Math.max(el,4)];
+      if(cPhase.id==="m")return{l:"Gentle Flow",c:"#9B5DE5",e:"🌙",q:"gentle calm focus"};
+      if(cPhase.id==="l"&&el<=2)return{l:"Lo-Fi Chill",c:"#C77DFF",e:"🎵",q:"lofi chill"};
+      if(cPhase.id==="o")return{l:"Power Mode",c:"#FF6B6B",e:"🚀",q:"power mode focus"};
     }
+    const vibes={1:{l:"Deep Focus",c:"#4D96FF",e:"🎹",q:"deep focus"},2:{l:"Lo-Fi Chill",c:"#C77DFF",e:"🎵",q:"lofi chill"},3:{l:"Steady Flow",c:"#6BCB77",e:"🌿",q:"steady flow focus"},4:{l:"Feel Good",c:"#FFD93D",e:"✨",q:"feel good focus"},5:{l:"Power Mode",c:"#FF6B6B",e:"🚀",q:"power mode"}};
     return vibes[Math.min(el,5)]||vibes[3];
   };
-  const vibe=getVibe(null);
+  const vibe=getVibe();
   const circ=2*Math.PI*57;
   useEffect(()=>{
     if(tRun&&tSec>0)tiRef.current=setTimeout(()=>setTSec(s=>s-1),1000);
@@ -877,10 +898,9 @@ function FocusSheet({onClose,energy,tasks,spotifyUrl,theme}){
     return()=>clearTimeout(tiRef.current);
   },[tRun,tSec]);
   const start=(mins)=>{
-    const s=mins*60;setTTot(s);setTSec(s);setTPk(mins);
+    const s=mins*60;setTTot(s);setTSec(s);setTPk(mins);setTRun(true);
     const fit=tasks.filter(t2=>!t2.dn&&t2.mn<=mins);
     const so=el>=4?[...fit].sort((a,b)=>(a.pr==="high"?0:1)-(b.pr==="high"?0:1)):[...fit].sort((a,b)=>a.mn-b.mn);
-    setFSug(so.slice(0,3));setTRun(true);
   };
   return(
     <>
@@ -893,10 +913,14 @@ function FocusSheet({onClose,energy,tasks,spotifyUrl,theme}){
         <div style={{background:"linear-gradient(135deg,"+vibe.c+","+vibe.c+"BB)",borderRadius:10,padding:"10px 11px",marginBottom:9,display:"flex",alignItems:"center",gap:7}}>
           <span style={{fontSize:18}}>{vibe.e}</span>
           <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",flex:1}}>{vibe.l}</div>
-          {!musOn?<button style={{padding:"4px 8px",background:"rgba(255,255,255,.25)",border:"none",color:"white",borderRadius:7,cursor:"pointer",fontFamily:"Nunito",fontWeight:700,fontSize:10}} onClick={()=>{const uri=spotifyUrl?spotifyUrl:"spotify:search:"+encodeURIComponent(vibe.l+" focus");const fallback=spotifyUrl||"https://open.spotify.com/search/"+encodeURIComponent(vibe.l+" focus");window.location.href=uri;setTimeout(()=>window.open(fallback,"_blank"),500);setMusOn(true);}}>🎵 Open Spotify</button>
-          :<div style={{display:"flex",alignItems:"center",gap:5}}><div className="mbars">{[1,2,3,4,5].map(i=><div key={i} className="mbar" style={{height:[5,11,8,14,7][i-1]+"px",animationDelay:((i-1)*.15)+"s"}}/>)}</div><button onClick={()=>{window.location.href=spotifyUrl?"spotify:":"spotify:";setMusOn(false);}} style={{background:"rgba(255,255,255,.2)",border:"none",color:"white",borderRadius:5,padding:"2px 6px",cursor:"pointer",fontSize:9,fontWeight:700}}>Open Spotify</button></div>}
-          {musOn&&<div style={{fontSize:8,color:"rgba(255,255,255,.7)",marginTop:2,textAlign:"center"}}>Music plays in Spotify app</div>}
+          {!musOn
+            ?<button style={{padding:"4px 8px",background:"rgba(255,255,255,.25)",border:"none",color:"white",borderRadius:7,cursor:"pointer",fontFamily:"Nunito",fontWeight:700,fontSize:10}} onClick={()=>{const uri=spotifyUrl?"spotify:"+spotifyUrl:"spotify:search:"+encodeURIComponent(vibe.q+" focus");window.location.href=uri;setTimeout(()=>window.open(spotifyUrl||"https://open.spotify.com/search/"+encodeURIComponent(vibe.q+" focus"),"_blank"),500);setMusOn(true);}}>🎵 Open Spotify</button>
+            :<div style={{display:"flex",alignItems:"center",gap:5}}>
+              <div className="mbars">{[1,2,3,4,5].map(i=><div key={i} className="mbar" style={{height:[5,11,8,14,7][i-1]+"px",animationDelay:((i-1)*.15)+"s"}}/>)}</div>
+              <button onClick={()=>{window.location.href="spotify:";setMusOn(false);}} style={{background:"rgba(255,255,255,.2)",border:"none",color:"white",borderRadius:5,padding:"2px 6px",cursor:"pointer",fontSize:9,fontWeight:700}}>Open Spotify</button>
+            </div>}
         </div>
+        {musOn&&<div style={{fontSize:9,color:"#AAA",textAlign:"center",marginBottom:7}}>Music plays in the Spotify app</div>}
         {!tRun&&tSec===0&&<div className="tg2">{[5,10,15,20,25,30,45,60,90].map(m=><button key={m} className={"tc2"+(tPk===m?" on":"")} onClick={()=>start(m)}>{m>=60?m/60+"h":m+"m"}</button>)}</div>}
         {(tRun||tSec>0)&&<>
           <div className="tmr">
@@ -905,34 +929,29 @@ function FocusSheet({onClose,energy,tasks,spotifyUrl,theme}){
           </div>
           <div className="brow">
             <button className="btn bp" onClick={()=>setTRun(r=>!r)}>{tRun?"⏸ Pause":"▶️ Resume"}</button>
-            <button className="btn bs" onClick={()=>{setTSec(0);setTTot(0);setTRun(false);setTPk(null);setFSug([]);setMusOn(false);}}>Reset</button>
+            <button className="btn bs" onClick={()=>{setTSec(0);setTTot(0);setTRun(false);setTPk(null);setMusOn(false);}}>Reset</button>
           </div>
-          {fSug.length>0&&<><div className="sl">Fits this session</div>{fSug.map(t2=><div key={t2.id} style={{padding:"7px 9px",background:"#F9F9F9",borderRadius:8,marginBottom:4,borderLeft:"3px solid "+t.acc,fontSize:11,fontWeight:700,color:t.dark}}>{t2.tl} · {t2.mn}m</div>)}</>}
         </>}
       </div>
     </>
   );
 }
 
-function AddEventModal({onClose,onSave,locs,initialDate,lc,le,theme}){
+function AddEventModal({onClose,onSave,locs,initialDate,theme}){
   const[title,setTitle]=useState("");
   const[evDate,setEvDate]=useState(initialDate||todayISO());
   const[allDay,setAllDay]=useState(false);
   const[startTime,setStartTime]=useState("09:00");
   const[endTime,setEndTime]=useState("10:00");
-  const handleStartChange=(val)=>{
-    setStartTime(val);
-    const[h,m]=val.split(":").map(Number);
-    const newH=(h+1)%24;
-    setEndTime(String(newH).padStart(2,"0")+":"+String(m).padStart(2,"0"));
-  };
   const[evLoc,setEvLoc]=useState(locs[0]||"Home");
   const[recur,setRecur]=useState("none");
   const[recurDays,setRecurDays]=useState([]);
   const[hasCost,setHasCost]=useState(false);
   const[cost,setCost]=useState("");
   const t=THEMES[theme]||THEMES.bloom;
-  const toggleDay=(d)=>setRecurDays(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);
+  const lc=(lo)=>getLC(lo,locs);
+  const le=(lo)=>getLE(lo,locs);
+  const handleStart=(val)=>{setStartTime(val);const[h,m]=val.split(":").map(Number);setEndTime(String((h+1)%24).padStart(2,"0")+":"+String(m).padStart(2,"0"));};
   const save=()=>{
     if(!title.trim())return;
     const ev={id:"ev"+Date.now(),title:title.trim(),date:evDate,allDay,startTime:allDay?"":startTime,endTime:allDay?"":endTime,loc:evLoc,recur,days:recur==="weekly"?recurDays:[],exceptions:[],endDate:null};
@@ -946,20 +965,14 @@ function AddEventModal({onClose,onSave,locs,initialDate,lc,le,theme}){
           <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>{"Add to "+new Date(evDate+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>
           <button className="db" onClick={onClose}>×</button>
         </div>
-        <div className="pf"><label>Title</label><input className="pi" placeholder="e.g. Dentist, Team meeting, Gym..." value={title} onChange={e=>setTitle(e.target.value)}/></div>
+        <div className="pf"><label>Title</label><input className="pi" placeholder="e.g. Dentist, Meeting, Gym..." value={title} onChange={e=>setTitle(e.target.value)}/></div>
         <div className="pf"><label>Date</label><input className="pi" type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}/></div>
-        <div className="tog-row" style={{marginBottom:7}}>
-          <div><div className="tog-lbl">📅 All day</div></div>
-          <button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/>
-        </div>
+        <div className="tog-row" style={{marginBottom:7}}><div><div className="tog-lbl">📅 All day</div></div><button className={"tog"+(allDay?" on":"")} onClick={()=>setAllDay(s=>!s)}/></div>
         {!allDay&&<div style={{display:"flex",gap:7,marginBottom:7}}>
-          <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>handleStartEdit(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>Start</label><input className="pi" type="time" value={startTime} onChange={e=>handleStart(e.target.value)}/></div>
           <div style={{flex:1}}><label style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:2}}>End</label><input className="pi" type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}/></div>
         </div>}
-        <div className="tog-row" style={{marginBottom:hasCost?6:7}}>
-          <div><div className="tog-lbl">💰 Add a cost</div><div className="tog-sub">e.g. nail appointment, car service</div></div>
-          <button className={"tog"+(hasCost?" on":"")} onClick={()=>setHasCost(s=>!s)}/>
-        </div>
+        <div className="tog-row" style={{marginBottom:hasCost?6:7}}><div><div className="tog-lbl">💰 Add a cost</div></div><button className={"tog"+(hasCost?" on":"")} onClick={()=>setHasCost(s=>!s)}/></div>
         {hasCost&&<div className="pf"><label>Amount (€)</label><input className="pi" type="number" placeholder="0.00" value={cost} onChange={e=>setCost(e.target.value)}/></div>}
         <div className="pf"><label>Location</label>
           <div className="fr">{locs.map(l=><button key={l} style={{flexShrink:0,padding:"4px 8px",borderRadius:13,border:"2px solid "+(evLoc===l?t.acc:"#EEE"),background:evLoc===l?t.acc:"white",color:evLoc===l?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:10,cursor:"pointer"}} onClick={()=>setEvLoc(l)}>{le(l)}{l}</button>)}</div>
@@ -972,8 +985,7 @@ function AddEventModal({onClose,onSave,locs,initialDate,lc,le,theme}){
           </div>
         </div>
         {recur==="weekly"&&<div className="pf"><label>On these days</label>
-          <div style={{display:"flex",gap:3}}>
-            {WDAYS.map(d=><button key={d} style={{minWidth:28,padding:"3px 2px",borderRadius:13,border:"2px solid "+(recurDays.includes(d)?t.acc:"#EEE"),background:recurDays.includes(d)?t.acc:"white",color:recurDays.includes(d)?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:9,cursor:"pointer",textAlign:"center"}} onClick={()=>toggleDay(d)}>{d}</button>)}
+          <div style={{display:"flex",gap:3}}>{WDAYS.map(d=><button key={d} style={{minWidth:28,padding:"3px 2px",borderRadius:13,border:"2px solid "+(recurDays.includes(d)?t.acc:"#EEE"),background:recurDays.includes(d)?t.acc:"white",color:recurDays.includes(d)?"white":"#888",fontFamily:"Nunito",fontWeight:700,fontSize:9,cursor:"pointer",textAlign:"center"}} onClick={()=>setRecurDays(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d])}>{d}</button>)}
           </div>
         </div>}
         <button style={{width:"100%",padding:11,background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white",border:"none",borderRadius:9,fontFamily:"Fredoka One",fontSize:14,cursor:"pointer",marginTop:4}} onClick={save}>Save</button>
@@ -1026,12 +1038,10 @@ function TourOverlay({onDone,onSkip,theme}){
   );
 }
 
-
-function Sect({id,icon,title,children,openSects,setOpenSects,searchQ,accent}){
-  const SEARCH_IDX=SEARCH_INDEX;
+function Sect({id,icon,title,children,openSects,setOpenSects,searchQ,accent,bg}){
   const matches=()=>{
     if(!searchQ)return true;
-    const entry=SEARCH_IDX.find(e=>e.section===id);
+    const entry=SEARCH_INDEX.find(e=>e.section===id);
     return entry&&entry.terms.some(term=>term.includes(searchQ)||searchQ.includes(term.substring(0,3)));
   };
   if(!matches())return null;
@@ -1052,11 +1062,11 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
   morningList,setMorningList,eveningList,setEveningList,
   incomes,setIncomes,fixedCosts,setFixedCosts,oneOffIncome,setOneOffIncome,
   spends,setSpends,finSetup,setFinSetup,lps,setLps,cLen,setCLen,cDay,cPhase,
-  rewards,setRewards,mStreak,eStreak,mdStreak,tasks,
+  rewards,setRewards,mStreak,eStreak,mdStreak,tasks,streakFreezes,setStreakFreezes,
   hasCommute,setHasCommute,commuteMins,setCommuteMins,commuteEveMins,setCommuteEveMins,
   taskFrom,setTaskFrom,taskTo,setTaskTo,spotifyUrl,setSpotifyUrl,
   calStartMon,setCalStartMon,tourDone,tourSkipped,setShowTour,setOnboarded,
-  newLoc2,setNewLoc2,getRP,lc,le}){
+  newLoc2,setNewLoc2,lc,le}){
   const[settingsSearch,setSettingsSearch]=useState("");
   const[openSects,setOpenSects]=useState({me:false,finance:false,cycle:false,rewards:false,app:false});
   const[nSAm,setNSAm]=useState("");
@@ -1065,6 +1075,9 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
   const[nRew,setNRew]=useState("");
   const[nRewT,setNRewT]=useState("");
   const[nRewI,setNRewI]=useState("🎁");
+  const[expandedRewardId,setExpandedRewardId]=useState(null);
+  const[expandedIncomeId,setExpandedIncomeId]=useState(null);
+  const[expandedCostId,setExpandedCostId]=useState(null);
   const t=THEMES[theme]||THEMES.bloom;
   const totalIncome=incomes.reduce((a,i)=>a+toMonthly(i.amount,i.freq),0)+oneOffIncome.reduce((a,i)=>a+(+i.amount||0),0)/12;
   const totalFixed=fixedCosts.reduce((a,c)=>a+toMonthly(c.amount,c.freq),0);
@@ -1072,51 +1085,70 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
   const dailyBudget=discretionary/30;
   const msSpends=spends.filter(s=>{const d=new Date(s.dt),n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();});
   const monthSpent=msSpends.reduce((a,s)=>a+s.am,0);
-  const upcomingComm=0;
-  const available=Math.max(0,discretionary-monthSpent-upcomingComm);
-
+  const available=Math.max(0,discretionary-monthSpent);
   const searchQ=settingsSearch.toLowerCase().trim();
-
-
+  const getRP=(r)=>{
+    if(r.ty==="ms"||r.ty==="ms14")return{cur:mStreak,max:r.sk};
+    if(r.ty==="es")return{cur:eStreak,max:r.sk};
+    if(r.ty==="ml")return{cur:mdStreak,max:r.sk};
+    if(r.ty==="dt")return{cur:tasks.filter(t2=>t2.dn).length,max:r.sk};
+    if(r.ty==="dr")return{cur:tasks.filter(t2=>t2.dn&&(t2.av||0)>=3).length,max:1};
+    return{cur:0,max:r.sk};
+  };
+  const handleSearch=(q)=>{
+    setSettingsSearch(q);
+    if(q.trim()){
+      const qL=q.toLowerCase();
+      const newOpen={me:false,finance:false,cycle:false,rewards:false,app:false};
+      SEARCH_INDEX.forEach(entry=>{
+        if(entry.terms.some(term=>term.includes(qL)||qL.includes(term.substring(0,3)))){
+          newOpen[entry.section]=true;
+        }
+      });
+      setOpenSects(newOpen);
+    }
+  };
   return(
     <>
       <div className="search-wrap">
         <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#BBB",pointerEvents:"none"}}>🔍</span>
-        <input className="search-in" placeholder="Search settings... e.g. budget, theme, cycle" value={settingsSearch} onChange={e=>{
-          const q=e.target.value;setSettingsSearch(q);
-          if(q.trim()){
-            const qL=q.toLowerCase();
-            const found=SEARCH_INDEX.find(entry=>entry.terms.some(term=>term.includes(qL)||qL.includes(term.substring(0,3))));
-            if(found)setOpenSects(p=>({...p,[found.section]:true}));
-          }
-        }}/>
+        <input className="search-in" placeholder="Search settings... e.g. budget, theme, cycle" value={settingsSearch} onChange={e=>handleSearch(e.target.value)}/>
       </div>
-
       {(tourDone||tourSkipped)&&<div style={{background:t.bg,borderRadius:9,padding:"8px 12px",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"space-between",border:"1.5px solid #EEE"}}>
         <div style={{fontSize:11,fontWeight:700,color:t.dark}}>👋 App tour</div>
         <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Watch tour</button>
       </div>}
-
-      <Sect id="me" icon="👤" title="Me" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
+      <Sect id="me" icon="👤" title="Me" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc} bg={t.bg}>
         <div className="pf" style={{marginTop:4}}><label>Name</label><input className="pi" value={profName} onChange={e=>setProfName(e.target.value)}/></div>
         <div className="pf"><label>What you do</label><input className="pi" value={role} onChange={e=>setRole(e.target.value)}/></div>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"9px 0 5px"}}>Locations</div>
         <div style={{display:"flex",flexWrap:"wrap",marginBottom:7}}>{locs.map((l,i)=><span key={i} className="ptg">{le(l)}{l}<span style={{cursor:"pointer",marginLeft:2,color:"#CCC"}} onClick={()=>setLocs(locs.filter((_,j)=>j!==i))}>×</span></span>)}</div>
         <div style={{display:"flex",gap:4,marginBottom:9}}><input className="pi" placeholder="Add location..." value={newLoc2} onChange={e=>setNewLoc2(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newLoc2.trim()){setLocs([...locs,newLoc2.trim()]);setNewLoc2("");}}}/><button className="btn bpu bsm" onClick={()=>{if(newLoc2.trim()){setLocs([...locs,newLoc2.trim()]);setNewLoc2("");}}}>+</button></div>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"0 0 5px"}}>Morning Routine</div>
-        {morningList.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div><button className="db" onClick={()=>setMorningList(l=>l.filter(x=>x.id!==i.id))}>×</button></div>)}
-        <div style={{display:"flex",gap:4,margin:"4px 0 9px"}}><input id="nm" className="pi" style={{fontSize:11}} placeholder="Add morning step..."/><button className="btn bp bsm" onClick={()=>{const el=document.getElementById("nm");if(!el||!el.value.trim())return;setMorningList(l=>[...l,{id:"m"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button></div>
+        {morningList.map((i,idx)=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}>
+          <div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div>
+          <button className="db" onClick={()=>setMorningList(l=>l.filter(x=>x.id!==i.id))}>×</button>
+        </div>)}
+        <div style={{display:"flex",gap:4,margin:"4px 0 9px"}}>
+          <input id="nm" className="pi" style={{fontSize:13}} placeholder="Add morning step..."/>
+          <button className="btn bp bsm" onClick={()=>{const el=document.getElementById("nm");if(!el||!el.value.trim())return;setMorningList(l=>[...l,{id:"m"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button>
+        </div>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"0 0 5px"}}>Evening Routine</div>
-        {eveningList.map(i=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div><button className="db" onClick={()=>setEveningList(l=>l.filter(x=>x.id!==i.id))}>×</button></div>)}
-        <div style={{display:"flex",gap:4,margin:"4px 0 0"}}><input id="ne" className="pi" style={{fontSize:11}} placeholder="Add evening step..."/><button className="btn bp bsm" onClick={()=>{const el=document.getElementById("ne");if(!el||!el.value.trim())return;setEveningList(l=>[...l,{id:"e"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button></div>
+        {eveningList.map((i,idx)=><div key={i.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}>
+          <div style={{flex:1}}><div style={{fontWeight:700,fontSize:11,color:t.dark}}>{i.l}</div><div style={{fontSize:9,color:"#AAA"}}>{i.t+" min"}</div></div>
+          <button className="db" onClick={()=>setEveningList(l=>l.filter(x=>x.id!==i.id))}>×</button>
+        </div>)}
+        <div style={{display:"flex",gap:4,margin:"4px 0 0"}}>
+          <input id="ne" className="pi" style={{fontSize:13}} placeholder="Add evening step..."/>
+          <button className="btn bp bsm" onClick={()=>{const el=document.getElementById("ne");if(!el||!el.value.trim())return;setEveningList(l=>[...l,{id:"e"+Date.now(),l:el.value.trim(),d:false,t:5}]);el.value="";}}>+</button>
+        </div>
         <div className="tog-row" style={{marginTop:7}}><div><div className="tog-lbl">🚗 I commute</div><div className="tog-sub">Blocks travel time from suggestions</div></div><button className={"tog"+(hasCommute?" on":"")} onClick={()=>setHasCommute(s=>!s)}/></div>
         {hasCommute&&<div style={{display:"flex",gap:7,marginTop:7}}>
           <div style={{flex:1}}><div className="pf"><label>Morning (mins)</label><input className="pi" type="number" min="5" max="180" value={commuteMins} onChange={e=>setCommuteMins(+e.target.value)}/></div></div>
           <div style={{flex:1}}><div className="pf"><label>Evening (mins)</label><input className="pi" type="number" min="5" max="180" value={commuteEveMins} onChange={e=>setCommuteEveMins(+e.target.value)}/></div></div>
         </div>}
       </Sect>
-
-      <Sect id="finance" icon="💰" title="Finance" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
+      <Sect id="finance" icon="💰" title="Finance" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc} bg={t.bg}>
         <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable spending tracker</div></div><button className={"tog"+(wantSpend?" on":"")} onClick={()=>setWantSpend(s=>!s)}/></div>
         {wantSpend&&<>
           {finSetup&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:11,padding:12,marginTop:9,marginBottom:9,color:"white"}}>
@@ -1127,21 +1159,40 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
             <div style={{background:"rgba(255,255,255,.2)",borderRadius:7,padding:"8px 10px"}}>
               <div style={{fontSize:9,fontWeight:800,opacity:.8,marginBottom:1}}>DISCRETIONARY</div>
               <div style={{fontFamily:"Fredoka One",fontSize:22}}>{"€"+discretionary.toFixed(0)}<span style={{fontSize:10,marginLeft:3}}>/month</span></div>
-              <div style={{fontSize:9,fontWeight:600,opacity:.9}}>{"€"+dailyBudget.toFixed(0)+"/day · Spent: €"+monthSpent.toFixed(0)+" · Committed: €"+upcomingComm.toFixed(0)}</div>
-              <div style={{background:"rgba(255,255,255,.2)",borderRadius:5,height:5,overflow:"hidden",marginTop:5}}><div style={{height:"100%",borderRadius:5,background:"white",width:Math.min((monthSpent+upcomingComm)/Math.max(discretionary,1),1)*100+"%"}}/></div>
+              <div style={{fontSize:9,fontWeight:600,opacity:.9}}>{"€"+dailyBudget.toFixed(0)+"/day · Spent: €"+monthSpent.toFixed(0)}</div>
               <div style={{fontSize:10,fontWeight:700,marginTop:4}}>{"Available: €"+available.toFixed(0)}</div>
             </div>
           </div>}
           {!finSetup&&<div style={{marginTop:9}}><button className="nb" style={{marginTop:0}} onClick={()=>setFinSetup(true)}>Set up my budget →</button></div>}
           {finSetup&&<>
             <div className="sl">Regular income</div>
-            {incomes.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+" · "+i.freq+(i.dayOfMonth?" · paid day "+i.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setIncomes(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
+            {incomes.map(i=>{const isExp=expandedIncomeId===i.id;return(<div key={i.id}>
+              <div className="fin-row" style={{cursor:"pointer"}} onClick={()=>setExpandedIncomeId(isExp?null:i.id)}>
+                <div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+" · "+i.freq}</div></div>
+                <span style={{fontSize:11,color:"#BBB",transform:isExp?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
+              </div>
+              {isExp&&<div className="inline-edit" style={{marginBottom:5}}>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bs bsm" style={{flex:1,color:"#FF6B6B"}} onClick={()=>{setIncomes(p=>p.filter(x=>x.id!==i.id));setExpandedIncomeId(null);}}>🗑️ Remove</button>
+                </div>
+              </div>}
+            </div>);})}
             <IncomeForm key="income-form" onAdd={i=>setIncomes(p=>[...p,i])} theme={theme}/>
-            <div className="sl">One-off income <span style={{fontSize:9,color:"#AAA"}}>(tax refund, bonus, etc)</span></div>
+            <div className="sl">One-off income</div>
             {oneOffIncome.map(i=><div key={i.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{i.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+i.amount+(i.date?" · "+i.date:"")}</div></div><button className="db" onClick={()=>setOneOffIncome(p=>p.filter(x=>x.id!==i.id))}>×</button></div>)}
             <OOIForm key="ooi-form" onAdd={i=>setOneOffIncome(p=>[...p,i])}/>
             <div className="sl">Fixed costs</div>
-            {fixedCosts.map(c=><div key={c.id} className="fin-row"><div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{c.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+c.amount+" · "+c.freq+(c.dayOfMonth?" · due day "+c.dayOfMonth:"")}</div></div><button className="db" onClick={()=>setFixedCosts(p=>p.filter(x=>x.id!==c.id))}>×</button></div>)}
+            {fixedCosts.map(c=>{const isExp=expandedCostId===c.id;return(<div key={c.id}>
+              <div className="fin-row" style={{cursor:"pointer"}} onClick={()=>setExpandedCostId(isExp?null:c.id)}>
+                <div><div style={{fontSize:11,fontWeight:700,color:t.dark}}>{c.label}</div><div style={{fontSize:9,color:"#AAA"}}>{"€"+c.amount+" · "+c.freq}</div></div>
+                <span style={{fontSize:11,color:"#BBB",transform:isExp?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
+              </div>
+              {isExp&&<div className="inline-edit" style={{marginBottom:5}}>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bs bsm" style={{flex:1,color:"#FF6B6B"}} onClick={()=>{setFixedCosts(p=>p.filter(x=>x.id!==c.id));setExpandedCostId(null);}}>🗑️ Remove</button>
+                </div>
+              </div>}
+            </div>);})}
             <CostForm key="cost-form" onAdd={c=>setFixedCosts(p=>[...p,c])} theme={theme}/>
             <div className="sl">Log a spend</div>
             <div style={{display:"flex",gap:5,marginBottom:5}}>
@@ -1155,8 +1206,7 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
           </>}
         </>}
       </Sect>
-
-      <Sect id="cycle" icon="🌙" title="Cycle Tracking" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
+      <Sect id="cycle" icon="🌙" title="Cycle Tracking" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc} bg={t.bg}>
         <div className="tog-row" style={{marginTop:4}}><div><div className="tog-lbl">Enable cycle tracking</div></div><button className={"tog"+(wantCycle?" on":"")} onClick={()=>setWantCycle(s=>!s)}/></div>
         {wantCycle&&<>
           <div className="pf" style={{marginTop:9}}><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
@@ -1167,23 +1217,31 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
           </div>}
         </>}
       </Sect>
-
-      <Sect id="rewards" icon="🏆" title="Rewards" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
+      <Sect id="rewards" icon="🏆" title="Rewards" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc} bg={t.bg}>
         <div style={{display:"flex",gap:9,flexWrap:"wrap",marginBottom:9,marginTop:4}}>
           {[["☀️",mStreak,"Morning"],["🌙",eStreak,"Evening"],["✅",tasks.filter(t2=>t2.dn).length,"Tasks"],["😊",mdStreak,"Mood"]].map(([l,v,label])=>(
             <div key={l} style={{textAlign:"center"}}><div style={{fontFamily:"Fredoka One",fontSize:18,color:t.acc}}>{v}</div><div style={{fontSize:9,fontWeight:700,color:"#AAA"}}>{l+" "+label}</div></div>
           ))}
         </div>
+        {streakFreezes&&<div className="freeze-badge" style={{marginBottom:9}}>
+          {streakFreezes.used?"🧊 Freeze used this week":"🧊 1 streak freeze available this week"}
+        </div>}
         {rewards.map(r=>{
           const{cur,max}=getRP(r);const earned=max>0?cur>=max:false;
+          const isExp=expandedRewardId===r.id;
           return(
-            <div key={r.id} className="rc" style={{border:earned?"2px solid #FFD93D":"none"}}>
-              <div className="ri">{r.ic}</div>
-              <div style={{flex:1}}><div style={{fontWeight:800,fontSize:11,color:t.dark}}>{r.rw}</div><div style={{fontSize:9,color:"#AAA",marginTop:1}}>{"🎯 "+r.tr}</div>
-                {earned&&<div className="re">🎉 Earned!</div>}
-                {max>0&&!earned&&<div className="sbar">{Array.from({length:Math.min(max,10)}).map((_,i)=><div key={i} className={"sd"+(i<cur?" on":"")}/>)}</div>}
+            <div key={r.id}>
+              <div className="rc" style={{border:earned?"2px solid #FFD93D":"none",cursor:"pointer"}} onClick={()=>setExpandedRewardId(isExp?null:r.id)}>
+                <div className="ri">{r.ic}</div>
+                <div style={{flex:1}}><div style={{fontWeight:800,fontSize:11,color:t.dark}}>{r.rw}</div><div style={{fontSize:9,color:"#AAA",marginTop:1}}>{"🎯 "+r.tr}</div>
+                  {earned&&<div className="re">🎉 Earned!</div>}
+                  {max>0&&!earned&&<div className="sbar">{Array.from({length:Math.min(max,10)}).map((_,i)=><div key={i} className={"sd"+(i<cur?" on":"")}/>)}</div>}
+                </div>
+                <span style={{fontSize:11,color:"#BBB",transform:isExp?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
               </div>
-              <button className="db" onClick={()=>setRewards(p=>p.filter(x=>x.id!==r.id))}>×</button>
+              {isExp&&<div className="inline-edit" style={{marginBottom:5}}>
+                <button className="btn bs bsm" style={{color:"#FF6B6B"}} onClick={()=>{setRewards(p=>p.filter(x=>x.id!==r.id));setExpandedRewardId(null);}}>🗑️ Remove reward</button>
+              </div>}
             </div>
           );
         })}
@@ -1192,11 +1250,10 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         <input className="pi" style={{marginBottom:5}} placeholder="When do you earn it?" value={nRewT} onChange={e=>setNRewT(e.target.value)}/>
         <button className="btn bp bsm" onClick={()=>{if(!nRew.trim()||!nRewT.trim())return;setRewards(r=>[...r,{id:"rc"+Date.now(),tr:nRewT,rw:nRew,ic:nRewI,sk:0,ty:"custom"}]);setNRew("");setNRewT("");setNRewI("🎁");}}>Add 🏆</button>
       </Sect>
-
-      <Sect id="app" icon="🎨" title="App Settings" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc}>
+      <Sect id="app" icon="🎨" title="App Settings" openSects={openSects} setOpenSects={setOpenSects} searchQ={searchQ} accent={t.acc} bg={t.bg}>
         <div style={{fontSize:9,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase",margin:"4px 0 6px"}}>Theme</div>
         <div className="th-grid">{Object.entries(THEMES).map(([key,th2])=><button key={key} className={"th-btn"+(theme===key?" on":"")} style={{background:"linear-gradient(135deg,"+th2.h1+","+th2.h2+")",color:"white"}} onClick={()=>setTheme(key)}>{th2.name}</button>)}</div>
-        <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD features</div><div className="tog-sub">Aversion ratings, ADHD-specific tips, dreaded task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
+        <div className="tog-row"><div><div className="tog-lbl">🧠 ADHD features</div><div className="tog-sub">Aversion ratings, ADHD tips, dreaded task nudges</div></div><button className={"tog"+(wantADHD?" on":"")} onClick={()=>setWantADHD(s=>!s)}/></div>
         <div className="tog-row"><div><div className="tog-lbl">📅 Start week on Monday</div></div><button className={"tog"+(calStartMon?" on":"")} onClick={()=>setCalStartMon(s=>!s)}/></div>
         <div style={{marginTop:9,display:"flex",gap:7}}>
           <div style={{flex:1}}><div className="pf"><label>Suggest tasks from</label><input className="pi" type="time" value={taskFrom} onChange={e=>setTaskFrom(e.target.value)}/></div></div>
@@ -1205,7 +1262,6 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
         <div className="pf"><label>Spotify playlist URL</label><input className="pi" placeholder="https://open.spotify.com/playlist/..." value={spotifyUrl} onChange={e=>setSpotifyUrl(e.target.value)}/></div>
         <div style={{marginTop:9}}><button className="btn bs" style={{width:"100%",fontSize:11}} onClick={()=>{if(window.confirm("Redo setup wizard? Your data will be kept."))setOnboarded(false);}}>Redo Setup Wizard</button></div>
       </Sect>
-
       <div className="card" style={{textAlign:"center",background:"linear-gradient(135deg,"+t.h1+"12,"+t.h2+"12)",marginTop:4}}>
         <div style={{fontSize:30,marginBottom:4}}>🧠</div>
         <div style={{fontFamily:"Fredoka One",fontSize:15,color:t.dark}}>BrainBloom</div>
@@ -1213,11 +1269,10 @@ function SettingsPage({theme,setTheme,profName,setProfName,role,setRole,locs,set
       </div>
     </>
   );
-
 }
 
 export default function App(){
-  // ── Persisted ──
+  // ── Persisted state ──
   const[pwaIntroDone,setPwaIntroDone]=useLS("bb_pwaintro",false);
   const[onboarded,setOnboarded]=useLS("bb_onboarded",false);
   const[theme,setTheme]=useLS("bb_theme","bloom");
@@ -1237,6 +1292,8 @@ export default function App(){
   const[mStreak,setMStreak]=useLS("bb_mstreak",0);
   const[eStreak,setEStreak]=useLS("bb_estreak",0);
   const[mdStreak,setMdStreak]=useLS("bb_mdstreak",0);
+  const[lastCheckinDate,setLastCheckinDate]=useLS("bb_lastcheckin","");
+  const[streakFreezes,setStreakFreezes]=useLS("bb_freezes",{used:false,weekOf:""});
   const[lps,setLps]=useLS("bb_lps",null);
   const[cLen,setCLen]=useLS("bb_clen",28);
   const[incomes,setIncomes]=useLS("bb_incomes",[]);
@@ -1254,42 +1311,30 @@ export default function App(){
   const[calStartMon,setCalStartMon]=useLS("bb_calmon",true);
   const[tourDone,setTourDone]=useLS("bb_tourdone",false);
   const[tourSkipped,setTourSkipped]=useLS("bb_tourskipped",false);
-  const[tourCardDismissed,setTourCardDismissed]=useLS("bb_tourcardout",false);
-  const[tooltipsSeen,setTooltipsSeen]=useLS("bb_tips",[]);
-  const[notifAsked,setNotifAsked]=useLS("bb_notifasked",false);
   const[checkinDays,setCheckinDays]=useLS("bb_checkindays",0);
-  const[finNudgeDismissed,setFinNudgeDismissed]=useLS("bb_finnudge",false);
-
-  // ── Session ──
-  const[tab,setTab]=useState("🏠");
-  const[csStep,setCsStep]=useState(0);
-  const[showCheckinEdit,setShowCheckinEdit]=useState(false);
-  const[checkinEditStep,setCheckinEditStep]=useState(0);
-  const[showSpendSheet,setShowSpendSheet]=useState(false);
-  const[showCycleSheet,setShowCycleSheet]=useState(false);
   const[savedCheckin,setSavedCheckin]=useLS("bb_checkin_today",null);
-  const csDone=savedCheckin&&savedCheckin.date===todayISO();
-  const setCsDone=(v)=>{if(v)setSavedCheckin(p=>({...p,date:todayISO()}));};
-  const mood=savedCheckin&&savedCheckin.date===todayISO()?savedCheckin.mood:null;
-  const setMood=(m)=>setSavedCheckin(p=>({...(p||{}),date:todayISO(),mood:m}));
-  const energy=savedCheckin&&savedCheckin.date===todayISO()?savedCheckin.energy:null;
-  const setEnergy=(e)=>setSavedCheckin(p=>({...(p||{}),date:todayISO(),energy:e}));
-  const syms=savedCheckin&&savedCheckin.date===todayISO()?(savedCheckin.syms||[]):[];
-  const setSyms=(fn)=>setSavedCheckin(p=>{const prev=(p&&p.date===todayISO()?p:{date:todayISO()});const cur=prev.syms||[];const next=typeof fn==="function"?fn(cur):fn;return{...prev,syms:next};});
-  const[evDone,setEvDone]=useLS("bb_evdone_today",{date:"",done:false});
-  const isEvDone=evDone.date===todayISO()&&evDone.done;
-  const[evMood,setEvMood]=useState(null);
-  const[notes,setNotes]=useState("");
+  const[savedEveLog,setSavedEveLog]=useLS("bb_evelog_today",null);
+  const[newLoc2,setNewLoc2]=useLS("bb_newloc2","");
+
+  // ── Session state ──
+  const[tab,setTab]=useState("🏠");
   const[selDay,setSelDay]=useState(todayISO());
   const[calMonth,setCalMonth]=useState(new Date());
   const[showAddEv,setShowAddEv]=useState(false);
-  const[detailItem,setDetailItem]=useState(null);
-  const[editingEv,setEditingEv]=useState(null);
   const[deleteModal,setDeleteModal]=useState(null);
   const[showVoice,setShowVoice]=useState(false);
   const[showFocus,setShowFocus]=useState(false);
   const[fabOpen,setFabOpen]=useState(false);
   const[showTour,setShowTour]=useState(false);
+  const[showSpendSheet,setShowSpendSheet]=useState(false);
+  const[showCycleSheet,setShowCycleSheet]=useState(false);
+  const[showCheckinEdit,setShowCheckinEdit]=useState(false);
+  const[checkinEditStep,setCheckinEditStep]=useState(0);
+  const[detailItem,setDetailItem]=useState(null);
+  const[fLoc,setFLoc]=useState("All");
+  const[nSAm,setNSAm]=useState("");
+  const[nSLb,setNSLb]=useState("");
+  const[nSCa,setNSCa]=useState("other");
   const[newT,setNewT]=useState("");
   const[nLoc,setNLoc]=useState("");
   const[nPri,setNPri]=useState("medium");
@@ -1298,44 +1343,86 @@ export default function App(){
   const[nRecur,setNRecur]=useState("none");
   const[nDeadline,setNDeadline]=useState("");
   const[nHasDead,setNHasDead]=useState(false);
-  const[fLoc,setFLoc]=useState("All");
   const[spRes,setSpRes]=useState(null);
   const[spinning,setSpinning]=useState(false);
   const[spAng,setSpAng]=useState(0);
-  const[newInc,setNewInc]=useState({label:"",amount:"",freq:"monthly",dayOfMonth:""});
-  const[newCost,setNewCost]=useState({label:"",amount:"",freq:"monthly",dayOfMonth:""});
-  const[newOOI,setNewOOI]=useState({label:"",amount:"",date:""});
-  const[newLoc2,setNewLoc2]=useState("");
-  const[ndDis,setNdDis]=useState(false);
-
-  const fabRef=useRef(null);
+  const[showSpinner,setShowSpinner]=useState(false);
+  const[expandedTaskId,setExpandedTaskId]=useState(null);
+  const[eveNotes,setEveNotes]=useState("");
   const cvRef=useRef(null);
-  const dragRef=useRef({active:false,sx:0,sy:0,px:0,py:0,moved:false});
+  const fabRef=useRef(null);
+  const dragRef=useRef({});
 
-  const t=THEMES[theme]||THEMES.bloom;
+  const t=useMemo(()=>THEMES[theme]||THEMES.bloom,[theme]);
+  const css=useMemo(()=>makeCSS(t),[t]);
   const greeting=useMemo(()=>getGreeting(),[]);
   const todayStr=new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  const isMorn=isMorning();
   const cDay=useMemo(()=>getCDay(lps,cLen),[lps,cLen]);
   const cPhase=useMemo(()=>getCPhase(cDay),[cDay]);
   const dtp=useMemo(()=>cDay?cLen-cDay+1:null,[cDay,cLen]);
+  const lc=useCallback((lo)=>getLC(lo,locs),[locs]);
+  const le=useCallback((lo)=>getLE(lo,locs),[locs]);
+
+  // Check-in state (today only)
+  const mood=savedCheckin&&savedCheckin.date===todayISO()?savedCheckin.mood:null;
+  const setMood=(m)=>setSavedCheckin(p=>({...(p||{}),date:todayISO(),mood:m}));
+  const energy=savedCheckin&&savedCheckin.date===todayISO()?savedCheckin.energy:null;
+  const setEnergy=(e)=>setSavedCheckin(p=>({...(p||{}),date:todayISO(),energy:e}));
+  const syms=savedCheckin&&savedCheckin.date===todayISO()?(savedCheckin.syms||[]):[];
+  const setSyms=(fn)=>setSavedCheckin(p=>{const prev=(p&&p.date===todayISO()?p:{date:todayISO()});const cur=prev.syms||[];const next=typeof fn==="function"?fn(cur):fn;return{...prev,syms:next};});
+
   const tip=useMemo(()=>getTip(mood,energy,syms,cPhase?cPhase.id:null,wantADHD),[mood,energy,syms,cPhase,wantADHD]);
-  const mPct=morningList.filter(i=>i.d).length/Math.max(morningList.length,1);
-  const el=energy?energy.n:3;
-  const lc=(lo)=>getLC(lo,locs);
-  const le=(lo)=>getLE(lo,locs);
 
   // Finance
   const totalIncome=useMemo(()=>incomes.reduce((a,i)=>a+toMonthly(i.amount,i.freq),0)+oneOffIncome.reduce((a,i)=>a+(+i.amount||0),0)/12,[incomes,oneOffIncome]);
   const totalFixed=useMemo(()=>fixedCosts.reduce((a,c)=>a+toMonthly(c.amount,c.freq),0),[fixedCosts]);
   const discretionary=Math.max(0,totalIncome-totalFixed);
   const dailyBudget=discretionary/30;
-  const msSpends=useMemo(()=>spends.filter(s=>{const d=new Date(s.dt),n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();}),[spends]);
-  const monthSpent=msSpends.reduce((a,s)=>a+s.am,0);
-  const todaySpends=spends.filter(s=>new Date(s.dt).toDateString()===new Date().toDateString());
+  const todaySpends=useMemo(()=>spends.filter(s=>new Date(s.dt).toDateString()===new Date().toDateString()),[spends]);
   const todaySpent=todaySpends.reduce((a,s)=>a+s.am,0);
-  const upcomingCosts=calEvents.filter(ev=>ev.cost&&ev.date>=todayISO()&&ev.date<=addDays(todayISO(),30));
-  const upcomingComm=upcomingCosts.reduce((a,ev)=>a+(ev.cost?ev.cost.amount:0),0);
-  const available=Math.max(0,discretionary-monthSpent-upcomingComm);
+
+  // Finance events pre-calculated per month
+  const finEventsForMonth=useMemo(()=>{
+    const year=calMonth.getFullYear(),month=calMonth.getMonth();
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const result={};
+    const WDAYS_ARR=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    for(let day=1;day<=daysInMonth;day++){
+      const iso=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+      const d=new Date(iso+"T12:00:00");
+      const dayNum=d.getDate();
+      const dayName=WDAYS_ARR[d.getDay()];
+      const evs=[];
+      incomes.forEach(i=>{
+        if(i.dayOfMonth&&["monthly","annually"].includes(i.freq)&&dayNum===+i.dayOfMonth)
+          evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+        if(i.dayOfWeek&&i.freq==="weekly"&&dayName===i.dayOfWeek)
+          evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+        if(i.dayOfWeek&&i.freq==="fortnightly"&&dayName===i.dayOfWeek){
+          const ref=i.startDate?new Date(i.startDate+"T12:00:00"):new Date("2024-01-01T12:00:00");
+          const weeksDiff=Math.round((d.getTime()-ref.getTime())/(7*86400000));
+          if(weeksDiff>=0&&weeksDiff%2===0)evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label+" (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
+        }
+      });
+      fixedCosts.forEach(c=>{
+        if(c.dayOfMonth&&["monthly","annually"].includes(c.freq)&&dayNum===+c.dayOfMonth)
+          evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+        if(c.dayOfWeek&&c.freq==="weekly"&&dayName===c.dayOfWeek)
+          evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+        if(c.dayOfWeek&&c.freq==="fortnightly"&&dayName===c.dayOfWeek){
+          const ref=c.startDate?new Date(c.startDate+"T12:00:00"):new Date("2024-01-01T12:00:00");
+          const weeksDiff=Math.round((d.getTime()-ref.getTime())/(7*86400000));
+          if(weeksDiff>=0&&weeksDiff%2===0)evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
+        }
+      });
+      oneOffIncome.forEach(o=>{if(o.date===iso)evs.push({id:"ooi_"+o.id,title:"💵 "+o.label+" (one-off)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income_once",amount:+o.amount});});
+      if(evs.length)result[iso]=evs;
+    }
+    return result;
+  },[calMonth,incomes,fixedCosts,oneOffIncome,locs]);
+
+  const getFinEventsForDay=(iso)=>finEventsForMonth[iso]||[];
 
   // Rewards
   const getRP=(r)=>{
@@ -1353,140 +1440,56 @@ export default function App(){
   },[rewards,mStreak,eStreak,mdStreak,tasks]);
 
   const pending=tasks.filter(t2=>!t2.dn&&!(t2.recur&&t2.recur!=="none"&&recurDoneThisWeek(t2)));
-  const dNudge=csDone&&!ndDis&&el>=4&&wantADHD?tasks.filter(t2=>!t2.dn&&(t2.av||0)>=3)[0]:null;
+  const dNudge=mood&&!savedCheckin?.ndDis&&energy&&energy.n>=4&&wantADHD?tasks.filter(t2=>!t2.dn&&(t2.av||0)>=3)[0]:null;
 
-  // Calendar helpers
-  const getEventsForDay=(iso)=>calEvents.filter(ev=>eventOccursOn(ev,iso));
-  const getFinEventsForDay=(iso)=>{
-    const evs=[];
-    const d=new Date(iso+"T12:00:00");
-    const dayNum=d.getDate();
-    const dayName=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][d.getDay()];
-    incomes.forEach(i=>{
-      if(i.dayOfMonth&&["monthly","annually"].includes(i.freq)&&dayNum===+i.dayOfMonth)
-        evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
-      if(i.dayOfWeek&&i.freq==="weekly"&&dayName===i.dayOfWeek)
-        evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label,date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
-      if(i.dayOfWeek&&i.freq==="fortnightly"&&dayName===i.dayOfWeek){
-        const ref=i.startDate?new Date(i.startDate+"T12:00:00"):new Date("2024-01-01T12:00:00");
-        const weeksDiff=Math.round((d.getTime()-ref.getTime())/(7*86400000));
-        if(weeksDiff>=0&&weeksDiff%2===0)evs.push({id:"inc_"+i.id+"_"+iso,title:"💵 "+i.label+" (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income",amount:+i.amount});
-      }
-    });
-    fixedCosts.forEach(c=>{
-      if(c.dayOfMonth&&["monthly","annually"].includes(c.freq)&&dayNum===+c.dayOfMonth)
-        evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
-      if(c.dayOfWeek&&c.freq==="weekly"&&dayName===c.dayOfWeek)
-        evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
-      if(c.dayOfWeek&&c.freq==="fortnightly"&&dayName===c.dayOfWeek){
-        const ref=c.startDate?new Date(c.startDate+"T12:00:00"):new Date("2024-01-01T12:00:00");
-        const weeksDiff=Math.round((d.getTime()-ref.getTime())/(7*86400000));
-        if(weeksDiff>=0&&weeksDiff%2===0)evs.push({id:"cost_"+c.id+"_"+iso,title:"💸 "+c.label+" due (fortnight)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:{amount:+c.amount,label:c.label},finType:"cost",amount:+c.amount});
-      }
-    });
-    oneOffIncome.forEach(o=>{if(o.date===iso)evs.push({id:"ooi_"+o.id,title:"💵 "+o.label+" (one-off)",date:iso,allDay:true,loc:locs[0]||"Home",recur:"none",days:[],exceptions:[],endDate:null,cost:null,finType:"income_once",amount:+o.amount});});
-    return evs;
-  };
-  const getAllDayEvents=(iso)=>[...getEventsForDay(iso).filter(ev=>ev.allDay),...getFinEventsForDay(iso)];
-  const getTasksForDay=(iso)=>tasks.filter(t2=>t2.deadline===iso&&!t2.dn);
-  const getLogForDay=(iso)=>logs.find(l=>l.dt===iso);
-  const getHabitsForDay=(iso)=>habitLog.find(h=>h.dt===iso);
-  const getCPhaseForDay=(iso)=>{
-    if(!lps||!cDay)return null;
-    const diff=Math.floor((new Date(iso+"T12:00:00")-new Date())/86400000);
-    return getCPhase(((cDay+diff-1+cLen*4)%cLen)+1);
-  };
-  const getMoodColor=(moodE)=>{const m=MOODS.find(x=>x.e===moodE);if(!m)return"#EEE";return m.n>=5?"#6BCB77":m.n>=3?"#FFD93D":"#FF6B6B";};
-
-  const handleDeleteEv=(ev,iso)=>{
-    if(ev.finType)return;
-    if(!ev.recur||ev.recur==="none"){setCalEvents(p=>p.filter(x=>x.id!==ev.id));return;}
-    setDeleteModal({ev,date:iso});
-  };
-  const confirmDelete=(type)=>{
-    if(!deleteModal)return;
-    const{ev,date}=deleteModal;
-    if(type==="all")setCalEvents(p=>p.filter(x=>x.id!==ev.id));
-    if(type==="this")setCalEvents(p=>p.map(x=>x.id===ev.id?{...x,exceptions:[...(x.exceptions||[]),date]}:x));
-    if(type==="future")setCalEvents(p=>p.map(x=>x.id===ev.id?{...x,endDate:addDays(date,-1)}:x));
-    setDeleteModal(null);
-  };
-
-  const togT=(id)=>setTasks(ts=>ts.map(t2=>t2.id===id?{...t2,dn:!t2.dn,lastDone:!t2.dn?new Date().toISOString():t2.lastDone}:t2));
-  const setAv=(id,s)=>setTasks(ts=>ts.map(t2=>t2.id===id?{...t2,av:s}:t2));
-  const addTask=()=>{
-    if(!newT.trim())return;
-    setTasks(ts=>[...ts,{id:"t"+Date.now(),tl:newT.trim(),lo:nLoc||locs[0]||"Home",pr:nPri,mn:nMin,dn:false,ov:false,av:nAv,recur:nRecur,deadline:nHasDead?nDeadline:null,lastDone:null}]);
-    setNewT("");setNAv(0);setNDeadline("");setNHasDead(false);setNRecur("none");
-  };
-  const getSorted=(lf)=>{
-    let f=tasks.filter(t2=>{
-      if(t2.dn)return false;
-      if(t2.recur&&t2.recur!=="none"&&recurDoneThisWeek(t2))return false;
-      if(lf&&lf!=="All"&&t2.lo!==lf)return false;
-      return true;
-    });
-    return f.sort((a,b)=>{
-      const ap=a.pr==="high"?0:a.pr==="medium"?1:2,bp=b.pr==="high"?0:b.pr==="medium"?1:2;
-      const ad=a.deadline?Math.max(0,Math.floor((new Date(a.deadline)-new Date())/86400000)):999;
-      const bd=b.deadline?Math.max(0,Math.floor((new Date(b.deadline)-new Date())/86400000)):999;
-      return ap!==bp?ap-bp:ad-bd;
-    });
-  };
-
-  // Notification prompt
-  useEffect(()=>{
-    if(!notifAsked&&onboarded&&"Notification"in window){
-      setTimeout(()=>{
-        if(window.confirm("Enable reminders to help you stay on track?")){
-          Notification.requestPermission().then(p=>{
-            // STUB: when permission granted, register with FCM backend
-            stubNotification("BrainBloom","Morning check-in time!");
-          });
-        }
-        setNotifAsked(true);
-      },3000);
-    }
-  },[onboarded,notifAsked]);
-
-  // Init location
+  // Init
   useEffect(()=>{if(locs.length>0&&!nLoc)setNLoc(locs[0]);},[locs]);
 
-  // Draggable FAB
+  // Streak freeze reset on Monday
+  useEffect(()=>{
+    const now=new Date();
+    const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
+    const weekOf=mon.toISOString().split("T")[0];
+    if(streakFreezes.weekOf!==weekOf)setStreakFreezes({used:false,weekOf});
+  },[]);
+
+  // Streak logic with reset + freeze
+  const updateStreaks=()=>{
+    const today=todayISO();
+    const yesterday=addDays(today,-1);
+    const hadYesterday=logs.some(l=>l.dt===yesterday);
+    const now=new Date();
+    const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
+    const weekOf=mon.toISOString().split("T")[0];
+    if(!hadYesterday&&lastCheckinDate!==yesterday){
+      if(!streakFreezes.used){
+        setStreakFreezes({used:true,weekOf});
+      } else {
+        setMStreak(0);setEStreak(0);setMdStreak(0);
+      }
+    }
+    setMStreak(s=>s+1);setMdStreak(s=>s+1);
+    setLastCheckinDate(today);
+    setCheckinDays(d=>d+1);
+  };
+
+  // FAB drag
   const fabPosRef=useRef(fabPos);
   useEffect(()=>{fabPosRef.current=fabPos;},[fabPos]);
   useEffect(()=>{
     const fab=fabRef.current;if(!fab)return;
     let startX=0,startY=0,startPX=0,startPY=0,dragging=false,moved=false;
-    const onTouchStart=(e)=>{
-      const p=e.touches[0];
-      startX=p.clientX;startY=p.clientY;
-      startPX=fabPosRef.current.x;startPY=fabPosRef.current.y;
-      dragging=true;moved=false;
-    };
-    const onTouchMove=(e)=>{
-      if(!dragging)return;
-      const p=e.touches[0];
-      const dx=p.clientX-startX,dy=p.clientY-startY;
-      if(Math.abs(dx)>8||Math.abs(dy)>8){
-        moved=true;
-        setFabPos({x:Math.max(10,Math.min(window.innerWidth-62,startPX+dx)),y:Math.max(10,Math.min(window.innerHeight-62,startPY+dy))});
-        e.preventDefault();
-      }
-    };
+    const onTouchStart=(e)=>{const p=e.touches[0];startX=p.clientX;startY=p.clientY;startPX=fabPosRef.current.x;startPY=fabPosRef.current.y;dragging=true;moved=false;};
+    const onTouchMove=(e)=>{if(!dragging)return;const p=e.touches[0];const dx=p.clientX-startX,dy=p.clientY-startY;if(Math.abs(dx)>8||Math.abs(dy)>8){moved=true;setFabPos({x:Math.max(10,Math.min(window.innerWidth-62,startPX+dx)),y:Math.max(10,Math.min(window.innerHeight-62,startPY+dy))});e.preventDefault();}};
     const onTouchEnd=()=>{dragging=false;};
     fab.addEventListener("touchstart",onTouchStart,{passive:true});
     window.addEventListener("touchmove",onTouchMove,{passive:false});
     window.addEventListener("touchend",onTouchEnd);
-    return()=>{
-      fab.removeEventListener("touchstart",onTouchStart);
-      window.removeEventListener("touchmove",onTouchMove);
-      window.removeEventListener("touchend",onTouchEnd);
-    };
+    return()=>{fab.removeEventListener("touchstart",onTouchStart);window.removeEventListener("touchmove",onTouchMove);window.removeEventListener("touchend",onTouchEnd);};
   },[]);
 
-  // Spin wheel
-  useEffect(()=>{drawWheel();},[pending.length,spAng,theme]);
+  // Spinner
+  useEffect(()=>{if(showSpinner)drawWheel();},[pending.length,spAng,theme,showSpinner]);
   const drawWheel=()=>{
     const c=cvRef.current;if(!c||!pending.length)return;
     const ctx=c.getContext("2d"),W=c.width,cx=W/2,cy=W/2,r=W/2-5;
@@ -1522,18 +1525,42 @@ export default function App(){
     requestAnimationFrame(anim);
   };
 
-  const saveEvLog=()=>{
-    const iso=todayISO();
-    setLogs(prev=>[{dt:iso,dtDisplay:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}),mood:evMood,energy,notes,syms,cph:cPhase?cPhase.id:null,cDay,tasksCompleted:tasks.filter(t2=>t2.dn).length,spent:todaySpent},...prev]);
-    if(notes.trim()){
-      const kw=["gym","walk","run","swim","yoga","exercise","lunch","breakfast","dinner","water","sleep","meditat","outside","read","bath","shower"];
-      const found=kw.filter(k=>notes.toLowerCase().includes(k));
-      if(found.length>0)setHabitLog(prev=>[{dt:iso,habits:found,mood:evMood?evMood.e:null,energy:energy?energy.e:null},...prev.filter(h=>h.dt!==iso)]);
-    }
-    setEvDone({date:todayISO(),done:true});setMStreak(s=>s<14?s+1:s);setEStreak(s=>s<14?s+1:s);setMdStreak(s=>s<7?s+1:s);
-    setCheckinDays(d=>d+1);
+  // Calendar helpers
+  const handleDeleteEv=(ev,iso)=>{
+    if(ev.finType)return;
+    if(!ev.recur||ev.recur==="none"){setCalEvents(p=>p.filter(x=>x.id!==ev.id));return;}
+    setDeleteModal({ev,date:iso});
   };
-
+  const confirmDelete=(type)=>{
+    if(!deleteModal)return;
+    const{ev,date}=deleteModal;
+    if(type==="all")setCalEvents(p=>p.filter(x=>x.id!==ev.id));
+    if(type==="this")setCalEvents(p=>p.map(x=>x.id===ev.id?{...x,exceptions:[...(x.exceptions||[]),date]}:x));
+    if(type==="future")setCalEvents(p=>p.map(x=>x.id===ev.id?{...x,endDate:addDays(date,-1)}:x));
+    setDeleteModal(null);
+  };
+  const togT=(id)=>setTasks(ts=>ts.map(t2=>t2.id===id?{...t2,dn:!t2.dn,lastDone:!t2.dn?new Date().toISOString():t2.lastDone}:t2));
+  const editTask=(id,changes)=>setTasks(ts=>ts.map(t2=>t2.id===id?{...t2,...changes}:t2));
+  const setAv=(id,s)=>setTasks(ts=>ts.map(t2=>t2.id===id?{...t2,av:s}:t2));
+  const addTask=()=>{
+    if(!newT.trim())return;
+    setTasks(ts=>[...ts,{id:"t"+Date.now(),tl:newT.trim(),lo:nLoc||locs[0]||"Home",pr:nPri,mn:nMin,dn:false,ov:false,av:nAv,recur:nRecur,deadline:nHasDead?nDeadline:null,lastDone:null}]);
+    setNewT("");setNAv(0);setNDeadline("");setNHasDead(false);setNRecur("none");
+  };
+  const getSorted=(lf)=>{
+    let f=tasks.filter(t2=>{
+      if(t2.dn)return false;
+      if(t2.recur&&t2.recur!=="none"&&recurDoneThisWeek(t2))return false;
+      if(lf&&lf!=="All"&&t2.lo!==lf)return false;
+      return true;
+    });
+    return f.sort((a,b)=>{
+      const ap=a.pr==="high"?0:a.pr==="medium"?1:2,bp=b.pr==="high"?0:b.pr==="medium"?1:2;
+      const ad=a.deadline?Math.max(0,Math.floor((new Date(a.deadline)-new Date())/86400000)):999;
+      const bd=b.deadline?Math.max(0,Math.floor((new Date(b.deadline)-new Date())/86400000)):999;
+      return ap!==bp?ap-bp:ad-bd;
+    });
+  };
   const handleVoiceResult=(r)=>{
     if(r.tasks&&r.tasks.length>0)setTasks(ts=>[...ts,...r.tasks.map((t2,i)=>({...t2,id:"ai"+Date.now()+i,dn:false,ov:false,lastDone:null,recur:t2.recur||"none"}))]);
     if(r.spends&&r.spends.length>0)setSpends(ss=>[...r.spends.map((s,i)=>({...s,id:"vs"+Date.now()+i,dt:new Date().toISOString()})),...ss]);
@@ -1542,211 +1569,61 @@ export default function App(){
     if(r.habits&&r.habits.length>0){const iso=todayISO();setHabitLog(prev=>[{dt:iso,habits:r.habits},...prev.filter(h=>h.dt!==iso)]);}
   };
 
-  // Tooltip helper
-  const Tip=({id,text})=>{
-    if(tooltipsSeen.includes(id))return null;
-    return(<div className="tooltip"><span style={{fontSize:13,flexShrink:0}}>💡</span><span style={{flex:1,lineHeight:1.4}}>{text}</span><button onClick={()=>setTooltipsSeen(p=>[...p,id])} style={{background:"none",border:"none",color:"#BBB",cursor:"pointer",fontSize:13,padding:0}}>×</button></div>);
-  };
+  // ── ONBOARDING ──
+  if(!pwaIntroDone)return<PWAIntro onDone={()=>setPwaIntroDone(true)}/>;
+  if(!onboarded)return<Onboarding theme={theme} onComplete={(data)=>{
+    setProfName(data.name);setRole(data.role);setLocs(data.locs);
+    setMorningList(data.mList.length>0?data.mList:DEFAULT_MORNING);
+    setEveningList(data.eList.length>0?data.eList:DEFAULT_EVENING);
+    setWantCycle(data.wantCycle);setWantSpend(data.wantSpend);setWantADHD(data.wantADHD);
+    setTheme(data.theme);setNLoc(data.locs[0]||"Home");
+    setTaskFrom(data.taskFrom||"09:00");setTaskTo(data.taskTo||"18:00");
+    setHasCommute(data.hasCommute||false);setCommuteMins(data.commuteMins||30);setCommuteEveMins(data.commuteEveMins||30);
+    if(data.cycleDate)setLps(data.cycleDate);
+    if(data.cycleLen)setCLen(data.cycleLen);
+    setOnboarded(true);setShowTour(true);
+  }}/>;
 
-  // Task card
-  const TC=({t2})=>{
-    const av=AVS[t2.av||0];
-    const du=t2.deadline?Math.ceil((new Date(t2.deadline+"T12:00:00")-new Date())/86400000):null;
-    const rdone=t2.recur&&t2.recur!=="none"&&recurDoneThisWeek(t2);
-    return(
-      <div className="tc" style={{borderLeftColor:lc(t2.lo),opacity:rdone?.55:1}}>
-        <div className={"ck"+(t2.dn||rdone?" on":"")} onClick={()=>!rdone&&togT(t2.id)}>{(t2.dn||rdone)&&<span style={{color:"white",fontSize:8}}>✓</span>}</div>
-        <div style={{flex:1}}>
-          <div className={"tt"+(t2.dn||rdone?" dn":"")}>{t2.tl}</div>
-          <div className="tm">
-            <span className="tg tglc" style={{background:lc(t2.lo)}}>{le(t2.lo)}{t2.lo}</span>
-            <span className="tg tgt">⏱ {t2.mn}m</span>
-            {t2.recur&&t2.recur!=="none"&&<span className="tg" style={{background:"#E8F0FF",color:"#4D96FF"}}>🔁 {t2.recur}</span>}
-            {t2.ov&&!t2.dn&&<span className="tg" style={{background:"#FFE5E5",color:"#FF6B6B"}}>⚠️ Overdue</span>}
-            {du!==null&&du<=3&&!t2.dn&&!rdone&&<span className="tg" style={{background:"#FFE5E5",color:"#FF6B6B"}}>{du===0?"Due today":du<0?"Overdue":"Due in "+du+"d"}</span>}
-            {wantADHD&&(t2.av||0)>=3&&!rdone&&<span className="tg" style={{background:av.c+"22",color:av.c}}>{av.e}</span>}
-            {rdone&&<span className="tg" style={{background:"#E8F8EC",color:"#6BCB77"}}>✓ Done this {t2.recur==="daily"?"day":t2.recur==="monthly"?"month":"week"}</span>}
-          </div>
-          {!t2.dn&&!rdone&&wantADHD&&<div className="av">{AVS.map(a=><button key={a.s} className="avb" style={(t2.av||0)===a.s?{background:a.c,borderColor:a.c,color:"white"}:{}} onClick={()=>setAv(t2.id,a.s)}>{a.e}<span style={{fontSize:8}}>{a.l}</span></button>)}</div>}
-        </div>
-      </div>
-    );
-  };
-
-  // Day panel
-  const DayPanel=({iso,compact})=>{
-    const allDay=getAllDayEvents(iso);
-    const timed=getEventsForDay(iso).filter(ev=>!ev.allDay).sort((a,b)=>(a.startTime||"").localeCompare(b.startTime||""));
-    const dayTasks=getTasksForDay(iso);
-    const dayLog=getLogForDay(iso);
-    const dayHabits=getHabitsForDay(iso);
-    const ph=getCPhaseForDay(iso);
-    const isPast=iso<todayISO();
-    const isFuture=iso>todayISO();
-    const isToday=iso===todayISO();
-    const slice=compact?3:99;
-    return(
-      <div style={{animation:"sli .25s ease"}}>
-        {wantCycle&&ph&&<div style={{background:ph.c+"18",borderRadius:8,padding:"5px 8px",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:14}}>{ph.e}</span>
-          <div><div style={{fontSize:10,fontWeight:800,color:ph.c}}>{ph.l} Phase</div><div style={{fontSize:9,fontWeight:600,color:"#666"}}>{ph.energy} energy · {ph.tips[0]}</div></div>
-          {isToday&&dtp&&dtp<=7&&dtp>0&&<div style={{marginLeft:"auto",fontSize:9,fontWeight:700,color:ph.c}}>{"🌑 "+dtp+"d"}</div>}
-        </div>}
-        {allDay.map(ev=>(
-          <div key={ev.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 7px",borderRadius:7,background:(ev.finType?"#FFF4CC":lc(ev.loc)+"22"),borderLeft:"3px solid "+(ev.finType?"#FFD93D":lc(ev.loc)),marginBottom:3,cursor:"pointer"}} onClick={()=>setDetailItem({item:ev,type:ev.finType?"financial":ev.cost?"financial":"event",iso})}>
-            <span style={{fontSize:10,fontWeight:700,color:ev.finType?"#F08C00":lc(ev.loc),flex:1}}>{ev.title+(ev.cost?" · €"+ev.cost.amount:ev.amount?" · €"+ev.amount:"")}</span>
-            <span style={{fontSize:9,color:"#BBB",fontWeight:600}}>›</span>
-          </div>
-        ))}
-        {timed.slice(0,slice).map(ev=>(
-          <div key={ev.id} className="day-ev" style={{background:lc(ev.loc)+"12",borderLeftColor:lc(ev.loc),cursor:"pointer"}} onClick={()=>setDetailItem({item:ev,type:ev.cost?"financial":"event",iso})}>
-            <div style={{fontSize:9,fontWeight:700,color:"#AAA",width:36,flexShrink:0,lineHeight:1.3}}>{ev.startTime}{ev.endTime?<><br/>{ev.endTime}</>:null}</div>
-            <div style={{flex:1}}>
-              <div style={{fontFamily:"Fredoka One",fontSize:11,color:lc(ev.loc)}}>{ev.title}</div>
-              <div style={{fontSize:9,color:"#AAA",fontWeight:600}}>{le(ev.loc)}{ev.loc}{ev.recur&&ev.recur!=="none"?" · 🔁 "+ev.recur:""}{ev.cost?" · 💰 €"+ev.cost.amount:""}</div>
-            </div>
-          </div>
-        ))}
-        {compact&&timed.length>3&&<div style={{fontSize:9,color:"#AAA",fontWeight:600}}>{"+"+(timed.length-3)+" more"}</div>}
-        {dayTasks.length>0&&<><div className="sl">Tasks due</div>{dayTasks.map(t2=><div key={t2.id} style={{cursor:"pointer"}} onClick={()=>setDetailItem({item:t2,type:"task",iso})}><TC t2={t2}/></div>)}</>}
-        {isPast&&dayLog&&<><div className="sl">Log</div>
-          <div style={{padding:"6px 8px",background:"#F9F9F9",borderRadius:8}}>
-            {dayLog.mood&&<div style={{fontSize:10,fontWeight:600,marginBottom:2}}>{dayLog.mood.e} {dayLog.mood.l}{dayLog.energy?" · "+dayLog.energy.e+" "+dayLog.energy.l:""}</div>}
-            {dayLog.syms&&dayLog.syms.length>0&&<div style={{fontSize:9,color:"#AAA",fontWeight:600,marginBottom:2}}>🩺 {dayLog.syms.join(", ")}</div>}
-            {dayHabits&&dayHabits.habits&&dayHabits.habits.length>0&&<div style={{fontSize:9,fontWeight:600,color:"#6BCB77"}}>🌿 {dayHabits.habits.join(", ")}</div>}
-          </div>
-        </>}
-        {allDay.length===0&&timed.length===0&&dayTasks.length===0&&!dayLog&&(
-          <div style={{fontSize:10,color:"#CCC",fontWeight:600,padding:"4px 0",textAlign:"center"}}>{isFuture?"Nothing planned — tap + Add":isToday?"Nothing scheduled — tap + Add":"Nothing logged"}</div>
-        )}
-      </div>
-    );
-  };
-
-  // ══ ONBOARDING ══
-  if(!pwaIntroDone){
-    return<PWAIntro onDone={()=>setPwaIntroDone(true)}/>;
-  }
-
-  if(!onboarded){
-    return<Onboarding theme={theme} onComplete={(data)=>{
-      setProfName(data.name);setRole(data.role);setLocs(data.locs);
-      setMorningList(data.mList.length>0?data.mList:DEFAULT_MORNING);
-      setEveningList(data.eList.length>0?data.eList:DEFAULT_EVENING);
-      setWantCycle(data.wantCycle);setWantSpend(data.wantSpend);setWantADHD(data.wantADHD);
-      setTheme(data.theme);setNLoc(data.locs[0]||"Home");
-      setTaskFrom(data.taskFrom||"09:00");setTaskTo(data.taskTo||"18:00");
-      setHasCommute(data.hasCommute||false);
-      setCommuteMins(data.commuteMins||30);setCommuteEveMins(data.commuteEveMins||30);
-      if(data.cycleDate)setLps(data.cycleDate);
-      if(data.cycleLen)setCLen(data.cycleLen);
-      setOnboarded(true);setShowTour(true);
-    }}/>;
-  }
-
-  // ══ HOME ══
+  // ── HOME ──
   const rHome=()=>{
-    const isVeteran=checkinDays>=7;
-    if(!csDone){
-      if(isVeteran){
-        return(
-          <div className="card" style={{border:"2px solid "+(greeting.isEve?"#9B5DE5":t.acc)}}>
-            <div className="ct">{greeting.emoji+" "+(greeting.isEve?"Evening":"Morning")+" check-in"}</div>
+    const routineList=isMorn?morningList:eveningList;
+    const setRoutine=isMorn?setMorningList:setEveningList;
+    const remaining=routineList.filter(i=>!i.d);
+    const totalMins=remaining.reduce((a,i)=>a+i.t,0);
+    const donePct=routineList.filter(i=>i.d).length/Math.max(routineList.length,1);
+    const rewardDesc=nearestReward?(nearestReward.ty==="ms"||nearestReward.ty==="ms14"?"morning streak":nearestReward.ty==="es"?"evening streak":nearestReward.ty==="ml"?"mood check-in":nearestReward.ty==="dt"?"tasks completed":nearestReward.ty==="dr"?"dreaded task":"step"):"";
+    return(
+      <>
+        {/* 1. CHECK-IN CARD (morning or evening) */}
+        <div className="card" style={{border:"2px solid "+(isMorn?t.acc:"#9B5DE5")}}>
+          <div style={{fontFamily:"Fredoka One",fontSize:15,color:t.dark,marginBottom:9}}>
+            {isMorn?"☀️ Morning Check-in":"🌙 Evening Check-in"}
+          </div>
+          {isMorn?<>
+            {/* MORNING: mood, energy, symptoms */}
             <div className="sl">How are you feeling?</div>
             <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(mood&&mood.e===m.e?" on":"")} onClick={()=>setMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
             <div className="sl">Energy?</div>
             <div className="erow">{ENERGIES.map(e=><button key={e.e} className={"eb"+(energy&&energy.e===e.e?" on":"")} onClick={()=>setEnergy(e)}>{e.e}<span>{e.l}</span></button>)}</div>
             <div className="sl">Anything to note? <span style={{fontSize:9,color:"#CCC"}}>(optional)</span></div>
             <div className="sg" style={{marginBottom:9}}>{SYMPTOMS.slice(0,6).map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
-            <button className="nb" disabled={!mood||!energy} onClick={()=>setCsDone(true)}>Start my {greeting.isEve?"evening":"day"} →</button>
-          </div>
-        );
-      }
-      const steps=[
-        <div key="m">
-          <div className="q">{greeting.emoji+" "+greeting.text+(profName?", "+profName:"")+"! How are you feeling?"}</div>
-          {wantCycle&&cPhase&&<div style={{background:cPhase.c+"18",border:"1.5px solid "+cPhase.c,borderRadius:7,padding:"4px 8px",fontSize:9,fontWeight:700,marginBottom:7,color:cPhase.c}}>{cPhase.e+" Cycle day "+cDay+" — "+cPhase.l}</div>}
-          <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(mood&&mood.e===m.e?" on":"")} onClick={()=>setMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
-          <button className="nb" disabled={!mood} onClick={()=>setCsStep(1)}>Next</button>
-        </div>,
-        <div key="e">
-          <div className="q">Energy level? ⚡</div>
-          <div className="erow">{ENERGIES.map(e=><button key={e.e} className={"eb"+(energy&&energy.e===e.e?" on":"")} onClick={()=>setEnergy(e)}>{e.e}<span>{e.l}</span></button>)}</div>
-          <button className="nb" disabled={!energy} onClick={()=>setCsStep(2)}>Next</button>
-        </div>,
-        <div key="b">
-          <div className="q">How busy is today? 📅</div>
-          <div style={{display:"flex",gap:5,marginBottom:9}}>
-            {[["quiet","🌿 Quiet","#6BCB77"],["average","😊 Average","#FFD93D"],["busy","🔥 Busy","#FF6B6B"]].map(([v,l,c])=>(
-              <button key={v} className="btn" style={{flex:1,fontFamily:"Nunito",fontSize:11,border:"2px solid "+(syms.includes("busy_"+v)?c:"#EEE"),background:syms.includes("busy_"+v)?c:t.card,color:syms.includes("busy_"+v)?"white":t.dark}} onClick={()=>setSyms(p=>[...p.filter(s=>!s.startsWith("busy_")),syms.includes("busy_"+v)?"":"busy_"+v].filter(Boolean))}>{l}</button>
-            ))}
-          </div>
-          <button className="nb" onClick={()=>setCsStep(3)}>Next</button>
-        </div>,
-        <div key="sy">
-          <div className="q">Anything to log? 🩺 <span style={{fontSize:11,color:"#AAA",fontWeight:600}}>(optional)</span></div>
-          <div className="sg">{SYMPTOMS.map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
-          <button className="nb" onClick={()=>setCsStep(4)}>Next</button>
-          <button className="ob-sk" onClick={()=>setCsStep(4)}>Skip</button>
-        </div>,
-        <div key="mr">
-          <div className="q">Morning routine ✨</div>
-          <div className="pw"><div className="pb" style={{width:(mPct*100)+"%"}}/></div>
-          <p style={{fontSize:9,color:"#AAA",fontWeight:700,marginBottom:7}}>{morningList.filter(i=>i.d).length+"/"+morningList.length+" done"}</p>
-          {morningList.map(i=>(
-            <div key={i.id} className="ci">
-              <div className={"cc"+(i.d?" on":"")} onClick={()=>setMorningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
-              <span className={"cl"+(i.d?" dn":"")}>{i.l}</span>
-              <span className="mb2">{i.t}m</span>
-            </div>
-          ))}
-          <button className="nb" style={{marginTop:10}} onClick={()=>setCsDone(true)}>{mPct===1?"🎉 Let's go!":"Start my day"}</button>
-        </div>,
-      ];
-      return(
-        <div className="card" style={{border:"2px solid "+(greeting.isEve?"#9B5DE5":t.acc)}}>
-          <div className="ct">{(greeting.isEve?"🌙":"☀️")+" Check-in "}<span style={{marginLeft:"auto",fontSize:9,color:"#AAA"}}>{"Step "+(csStep+1)+"/5"}</span></div>
-          <div className="pw" style={{marginBottom:10}}><div className="pb" style={{width:((csStep/4)*100)+"%"}}/></div>
-          {steps[csStep]}
-        </div>
-      );
-    }
-
-    return(
-      <>
-        {/* Tip */}
-        {tip&&<div className="tip-card"><div className="tip-t">{tip.tip}</div><div className="tip-x">{tip.text}</div><div className="tip-s">{"— "+tip.source}</div></div>}
-
-        {/* Tour card */}
-        {tourSkipped&&!tourCardDismissed&&<div style={{background:"linear-gradient(135deg,"+t.h1+"18,"+t.h2+"18)",borderRadius:12,padding:11,marginBottom:9,border:"1.5px solid "+t.acc+"44"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-            <div style={{fontFamily:"Fredoka One",fontSize:13,color:t.acc}}>👋 Quick tour</div>
-            <button className="db" onClick={()=>setTourCardDismissed(true)}>×</button>
-          </div>
-          <button className="btn bp bsm" onClick={()=>setShowTour(true)}>Start tour</button>
-        </div>}
-
-        {/* ADHD dreaded task nudge */}
-        {dNudge&&<div style={{background:"linear-gradient(135deg,#FFF0F0,#FFF4CC)",border:"2px solid "+t.acc,borderRadius:13,padding:11,marginBottom:9}}>
-          <div style={{fontFamily:"Fredoka One",fontSize:13,color:t.acc,marginBottom:2}}>😤 High energy — tackle something you've been avoiding!</div>
-          <div style={{background:t.card,borderRadius:8,padding:"7px 9px",borderLeft:"3px solid "+t.acc,marginBottom:7}}>
-            <div style={{fontWeight:700,fontSize:11}}>{dNudge.tl}</div>
-            <div className="tm" style={{marginTop:2}}><span className="tg tglc" style={{background:lc(dNudge.lo)}}>{le(dNudge.lo)+dNudge.lo}</span><span className="tg tgt">{"⏱ "+dNudge.mn+"m"}</span></div>
-          </div>
-          <div className="brow"><button className="btn bp bsm" onClick={()=>{togT(dNudge.id);setNdDis(true);}}>Done! 🎉</button><button className="btn bs bsm" onClick={()=>setNdDis(true)}>Not today</button></div>
-        </div>}
-
-        {/* 1. ROUTINE — only show the relevant one */}
-        {(()=>{
-          const routineList=greeting.isEve?eveningList:morningList;
-          const setRoutine=greeting.isEve?setEveningList:setMorningList;
-          const remaining=routineList.filter(i=>!i.d);
-          const totalMins=remaining.reduce((a,i)=>a+i.t,0);
-          const donePct=routineList.filter(i=>i.d).length/Math.max(routineList.length,1);
-          return<div className="card">
+            {mood&&energy&&!savedCheckin?.mCheckinSaved&&<button className="nb" style={{marginTop:0}} onClick={()=>{updateStreaks();setSavedCheckin(p=>({...p,mCheckinSaved:true}));}}>Save check-in ✓</button>}
+            {savedCheckin?.mCheckinSaved&&<div style={{fontSize:10,color:"#6BCB77",fontWeight:700,textAlign:"center",padding:"4px 0"}}>✓ Saved — tap any item above to edit</div>}
+          </>:<>
+            {/* EVENING: routine + notes */}
+            <p style={{fontSize:10,fontWeight:600,color:"#888",lineHeight:1.5,marginBottom:9}}>
+              How did today go? Note anything that affected your mood, energy or symptoms — sleep, food, stress, exercise, social events. Over time BrainBloom will start to spot patterns.
+            </p>
+            <textarea className="na" placeholder="e.g. Had a great walk, felt anxious before the meeting, slept 6 hours..." value={eveNotes} onChange={e=>setEveNotes(e.target.value)} style={{marginBottom:9}}/>
+          </>}
+          {/* ROUTINE — inline in check-in card */}
+          <div style={{borderTop:"1px solid #F5F5F5",paddingTop:9,marginTop:5}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
-              <div className="ct" style={{marginBottom:0}}>{greeting.isEve?"🌙 Evening Routine":"☀️ Morning Routine"}</div>
-              <span style={{fontSize:9,color:t.acc,fontWeight:700,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>{routineList.filter(i=>i.d).length+"/"+routineList.length+" · Edit →"}</span>
+              <div style={{fontWeight:700,fontSize:12,color:t.dark}}>{isMorn?"☀️ Morning Routine":"🌙 Evening Routine"}</div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                <span style={{fontSize:9,color:"#AAA"}}>{routineList.filter(i=>i.d).length+"/"+routineList.length}</span>
+                {remaining.length>0&&totalMins>0&&<button className="btn bp bsm" style={{fontSize:9}} onClick={()=>setShowFocus(true)}>⏱ {totalMins}m</button>}
+              </div>
             </div>
             <div className="pw" style={{marginBottom:6}}><div className="pb" style={{width:(donePct*100)+"%"}}/></div>
             {routineList.map(i=>(
@@ -1756,60 +1633,53 @@ export default function App(){
                 <span className="mb2">{i.t}m</span>
               </div>
             ))}
-            {remaining.length>0&&totalMins>0&&<button className="btn bp bsm" style={{marginTop:8,width:"100%"}} onClick={()=>{setShowFocus(true);}}>
-              ⏱️ Start {totalMins} min focus to complete routine
-            </button>}
-          </div>;
-        })()}
+            {/* Add routine step inline */}
+            <AddRoutineStep onAdd={(step)=>setRoutine(l=>[...l,step])} isMorn={isMorn}/>
+            {!isMorn&&eveNotes&&<button className="nb" style={{marginTop:9,background:"linear-gradient(135deg,#9B5DE5,#4361EE)"}} onClick={()=>{
+              const iso=todayISO();
+              setLogs(prev=>{
+                const existing=prev.find(l=>l.dt===iso);
+                const updated={dt:iso,dtDisplay:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}),mood,energy,notes:eveNotes,syms,cph:cPhase?cPhase.id:null,cDay,tasksCompleted:tasks.filter(t2=>t2.dn).length,spent:todaySpent};
+                if(existing)return prev.map(l=>l.dt===iso?{...l,...updated}:l);
+                return[updated,...prev];
+              });
+              setEStreak(s=>s+1);
+              setEveNotes("");
+              setSavedEveLog({date:iso,saved:true});
+            }}>Save evening log 🌙</button>}
+            {savedEveLog&&savedEveLog.date===todayISO()&&savedEveLog.saved&&!eveNotes&&<div style={{fontSize:10,color:"#9B5DE5",fontWeight:700,textAlign:"center",padding:"4px 0"}}>✓ Evening log saved</div>}
+          </div>
+        </div>
 
-        {/* 2. TODAY SCHEDULE — date, mood/energy/cycle, all events */}
+        {/* 2. TODAY SCHEDULE */}
         <div className="card" style={{border:"2px solid "+t.acc+"44"}}>
-          {/* Date */}
-          <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark,marginBottom:9}}>
+          <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark,marginBottom:2}}>
             {new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}
           </div>
-          {/* Mood / Energy / Cycle row — all tappable */}
-          {csDone&&<div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-            {mood&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"5px 9px",borderRadius:9,background:t.bg,cursor:"pointer",border:"1.5px solid #EEE"}} onClick={()=>{setCheckinEditStep(0);setShowCheckinEdit(true);}}>
-              <span style={{fontSize:16}}>{mood.e}</span>
-              <div><div style={{fontSize:8,fontWeight:800,color:"#BBB",textTransform:"uppercase",letterSpacing:.5}}>Mood</div><div style={{fontSize:10,fontWeight:700,color:t.dark}}>{mood.l}</div></div>
-              <span style={{fontSize:9,color:"#BBB"}}>✏️</span>
-            </div>}
-            {energy&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"5px 9px",borderRadius:9,background:t.bg,cursor:"pointer",border:"1.5px solid #EEE"}} onClick={()=>{setCheckinEditStep(1);setShowCheckinEdit(true);}}>
-              <span style={{fontSize:16}}>{energy.e}</span>
-              <div><div style={{fontSize:8,fontWeight:800,color:"#BBB",textTransform:"uppercase",letterSpacing:.5}}>Energy</div><div style={{fontSize:10,fontWeight:700,color:t.dark}}>{energy.l}</div></div>
-              <span style={{fontSize:9,color:"#BBB"}}>✏️</span>
-            </div>}
-            {wantCycle&&cPhase&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"5px 9px",borderRadius:9,background:cPhase.c+"15",cursor:"pointer",border:"1.5px solid "+cPhase.c+"44"}} onClick={()=>setShowCycleSheet(true)}>
-              <span style={{fontSize:16}}>{cPhase.e}</span>
-              <div><div style={{fontSize:8,fontWeight:800,color:cPhase.c,textTransform:"uppercase",letterSpacing:.5}}>{"Day "+cDay}</div><div style={{fontSize:10,fontWeight:700,color:cPhase.c}}>{cPhase.l}</div></div>
-              <span style={{fontSize:9,color:cPhase.c}}>✏️</span>
-            </div>}
+          {wantCycle&&cPhase&&cDay&&<div style={{fontSize:10,fontWeight:700,color:cPhase.c,marginBottom:8,cursor:"pointer"}} onClick={()=>setShowCycleSheet(true)}>
+            {cPhase.e+" Day "+cDay+" · "+cPhase.l+" Phase"}{dtp&&dtp<=7&&dtp>0?" · 🌑 "+dtp+"d":""}
           </div>}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
             <div style={{fontSize:10,fontWeight:800,color:"#BBB",letterSpacing:1,textTransform:"uppercase"}}>Schedule</div>
             <button className="btn bp bsm" onClick={()=>{setSelDay(todayISO());setShowAddEv(true);}}>+ Add</button>
           </div>
-          <DayPanel iso={todayISO()} compact={false}/>
+          <DayPanel iso={todayISO()} compact={false} calEvents={[...calEvents,...getFinEventsForDay(todayISO())]} tasks={tasks} logs={logs} habitLog={habitLog} lps={lps} cLen={cLen} locs={locs} wantCycle={wantCycle} setDetailItem={setDetailItem} handleDeleteEv={handleDeleteEv} t={t}/>
         </div>
 
-        {/* 3. MIDDLE ROW — spending left, cycle right */}
+        {/* 3. SPENDING + CYCLE ROW */}
         <div style={{display:"flex",gap:9,marginBottom:9}}>
-          {/* Spending panel */}
           <div style={{flex:1}}>
-            {wantSpend&&finSetup?<div className="card" style={{marginBottom:0,cursor:"pointer",height:"100%"}} onClick={()=>setShowSpendSheet(true)}>
+            {wantSpend&&finSetup?<div className="card" style={{marginBottom:0,cursor:"pointer"}} onClick={()=>setShowSpendSheet(true)}>
               <div className="ct" style={{fontSize:12,marginBottom:5}}>💰 Today</div>
               <div style={{fontFamily:"Fredoka One",fontSize:22,color:t.acc}}>{"€"+todaySpent.toFixed(0)}</div>
               <div style={{fontSize:9,color:"#AAA",fontWeight:600,marginBottom:4}}>{"of €"+dailyBudget.toFixed(0)+"/day"}</div>
               <div className="pw"><div className="pb" style={{width:(Math.min(todaySpent/Math.max(dailyBudget,1),1)*100)+"%"}}/></div>
-              {todaySpends.length>0&&<div style={{marginTop:5}}>{todaySpends.slice(0,2).map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",justifyContent:"space-between",fontSize:9,fontWeight:600,color:"#888",marginTop:2}}><span>{cat.e} {s.lb}</span><span>{"€"+s.am.toFixed(0)}</span></div>;})}</div>}
-            </div>:wantSpend&&!finNudgeDismissed?<div className="card" style={{marginBottom:0,border:"2px solid #FFD93D"}}>
+            </div>:wantSpend?<div className="card" style={{marginBottom:0,border:"2px solid #FFD93D",cursor:"pointer"}} onClick={()=>setTab("⚙️")}>
               <div style={{fontFamily:"Fredoka One",fontSize:12,color:"#FF6B6B",marginBottom:3}}>💰 Budget</div>
               <p style={{fontSize:10,fontWeight:600,color:"#444",marginBottom:6}}>Set up to track spending</p>
-              <button className="btn bp bsm" style={{fontSize:9}} onClick={()=>setTab("⚙️")}>Set up →</button>
+              <button className="btn bp bsm" style={{fontSize:9}}>Set up →</button>
             </div>:<div style={{flex:1}}/>}
           </div>
-          {/* Cycle + energy panel */}
           <div style={{flex:1}}>
             {wantCycle&&cPhase?<div className="card" style={{marginBottom:0,background:cPhase.c+"10",cursor:"pointer"}} onClick={()=>setShowCycleSheet(true)}>
               <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
@@ -1818,78 +1688,55 @@ export default function App(){
               </div>
               <div style={{fontSize:9,fontWeight:800,color:cPhase.c,marginBottom:2}}>{cPhase.energy} energy</div>
               <div style={{fontSize:9,fontWeight:600,color:"#555",lineHeight:1.4}}>{cPhase.tips[0]}</div>
-              {dtp&&dtp<=7&&dtp>0&&<div style={{fontSize:9,fontWeight:700,color:cPhase.c,marginTop:3}}>{"🌑 "+dtp+"d"}</div>}
             </div>:energy?<div className="card" style={{marginBottom:0}}>
               <div style={{fontFamily:"Fredoka One",fontSize:12,color:t.dark,marginBottom:4}}>Today's energy</div>
-              <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:22}}>{energy.e}</span><div style={{fontSize:13,fontWeight:700,color:t.dark}}>{energy.l}</div></div>
-              {mood&&<div style={{fontSize:9,fontWeight:600,color:"#888"}}>{mood.e} {mood.l}</div>}
+              <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:22}}>{energy.e}</span><div style={{fontSize:13,fontWeight:700,color:t.dark}}>{energy.l}</div></div>
             </div>:<div style={{flex:1}}/>}
           </div>
         </div>
 
-        {/* 4. REWARDS — clear and prominent */}
-        {nearestReward&&(()=>{
-          const rewardDesc=nearestReward.ty==="ms"||nearestReward.ty==="ms14"?"morning streak":nearestReward.ty==="es"?"evening streak":nearestReward.ty==="ml"?"mood check-in":nearestReward.ty==="dt"?"tasks completed":nearestReward.ty==="dr"?"dreaded task":"step";
-          return<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:13,padding:13,marginBottom:9,cursor:"pointer"}} onClick={()=>{setTab("⚙️");setTimeout(()=>{const el=document.getElementById("rewards-sect");if(el)el.scrollIntoView({behavior:"smooth"});},100);}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:44,height:44,borderRadius:11,background:"rgba(255,255,255,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{nearestReward.ic}</div>
-              <div style={{flex:1}}>
-                <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",marginBottom:2}}>🏆 Next reward</div>
-                <div style={{fontSize:11,fontWeight:700,color:"white",marginBottom:4}}>{nearestReward.rw}</div>
-                <div style={{background:"rgba(255,255,255,.2)",borderRadius:6,height:7,overflow:"hidden"}}>
-                  <div style={{height:"100%",borderRadius:6,background:"white",width:(Math.min(nearestReward.cur/Math.max(nearestReward.max,1),1)*100)+"%",transition:"width .4s"}}/>
-                </div>
-                <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.8)",marginTop:2}}>{nearestReward.gap===1?"1 more "+rewardDesc+" to earn this!":nearestReward.gap+" more "+rewardDesc+"s to earn this"}</div>
+        {/* 4. REWARD */}
+        {nearestReward&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:13,padding:13,marginBottom:9,cursor:"pointer"}} onClick={()=>setTab("⚙️")}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:44,height:44,borderRadius:11,background:"rgba(255,255,255,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{nearestReward.ic}</div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:"Fredoka One",fontSize:13,color:"white",marginBottom:2}}>🏆 Next reward</div>
+              <div style={{fontSize:11,fontWeight:700,color:"white",marginBottom:4}}>{nearestReward.rw}</div>
+              <div style={{background:"rgba(255,255,255,.2)",borderRadius:6,height:7,overflow:"hidden"}}>
+                <div style={{height:"100%",borderRadius:6,background:"white",width:(Math.min(nearestReward.cur/Math.max(nearestReward.max,1),1)*100)+"%",transition:"width .4s"}}/>
               </div>
+              <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.8)",marginTop:2}}>{nearestReward.gap===1?"1 more "+rewardDesc+" to earn this!":nearestReward.gap+" more "+rewardDesc+"s to earn this"}</div>
             </div>
-          </div>;
-        })()}
-
-        {/* Evening check-in */}
-        {greeting.isEve&&!isEvDone&&<div className="card" style={{border:"2px solid #9B5DE5"}}>
-          <div className="ct">🌙 Evening Check-in</div>
-          <div className="sl">How are you feeling?</div>
-          <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(evMood&&evMood.e===m.e?" on":"")} onClick={()=>setEvMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
-          <div className="sl">Evening routine</div>
-          {eveningList.map(i=>(
-            <div key={i.id} className="ci">
-              <div className={"cc"+(i.d?" on":"")} onClick={()=>setEveningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
-              <span className={"cl"+(i.d?" dn":"")}>{i.l}</span>
-              <span className="mb2">{i.t}m</span>
-            </div>
-          ))}
-          <div className="sl">Day notes</div>
-          <textarea className="na" placeholder="e.g. Went to the gym, had lunch, feeling tired..." value={notes} onChange={e=>setNotes(e.target.value)}/>
-          <button className="nb" style={{marginTop:7,background:"linear-gradient(135deg,#9B5DE5,#4361EE)"}} onClick={saveEvLog}>Save and wind down 🌙</button>
-        </div>}
-        {isEvDone&&<div className="card" style={{textAlign:"center",background:"linear-gradient(135deg,#F9F5FF,#FFF0F0)"}}><div style={{fontSize:34}}>🌙</div><div style={{fontFamily:"Fredoka One",fontSize:15,marginTop:4}}>Evening done!</div><p style={{fontSize:10,color:"#AAA",marginTop:1}}>Rest well 💙</p></div>}
-
-        {/* Evening routine always shown */}
-        <div className="card">
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
-            <div className="ct" style={{marginBottom:0}}>🌙 Evening Routine</div>
-            <span style={{fontSize:9,color:t.acc,fontWeight:700,cursor:"pointer"}} onClick={()=>{setTab("⚙️");setOpenSects(p=>({...p,me:true}));}}>{eveningList.filter(i=>i.d).length+"/"+eveningList.length+" · Edit →"}</span>
           </div>
-          <div className="pw"><div className="pb" style={{width:(eveningList.filter(i=>i.d).length/Math.max(eveningList.length,1)*100)+"%"}}/></div>
-          {eveningList.map(i=>(
-            <div key={i.id} className="ci">
-              <div className={"cc"+(i.d?" on":"")} onClick={()=>setEveningList(l=>l.map(x=>x.id===i.id?{...x,d:!x.d}:x))}>{i.d&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
-              <span className={"cl"+(i.d?" dn":"")}>{i.l}</span>
-              <span className="mb2">{i.t}m</span>
-            </div>
-          ))}
-        </div>
+        </div>}
+
+        {/* 5. ADHD dreaded task nudge */}
+        {dNudge&&<div style={{background:"linear-gradient(135deg,#FFF0F0,#FFF4CC)",border:"2px solid "+t.acc,borderRadius:13,padding:11,marginBottom:9}}>
+          <div style={{fontFamily:"Fredoka One",fontSize:13,color:t.acc,marginBottom:2}}>😤 High energy — tackle something you've been avoiding!</div>
+          <div style={{background:t.card,borderRadius:8,padding:"7px 9px",borderLeft:"3px solid "+t.acc,marginBottom:7}}>
+            <div style={{fontWeight:700,fontSize:11}}>{dNudge.tl}</div>
+            <div className="tm" style={{marginTop:2}}><span className="tg tglc" style={{background:lc(dNudge.lo)}}>{le(dNudge.lo)+dNudge.lo}</span><span className="tg tgt">{"⏱ "+dNudge.mn+"m"}</span></div>
+          </div>
+          <div className="brow">
+            <button className="btn bp bsm" onClick={()=>{togT(dNudge.id);setSavedCheckin(p=>({...p,ndDis:true}));}}>Done! 🎉</button>
+            <button className="btn bs bsm" onClick={()=>setSavedCheckin(p=>({...p,ndDis:true}))}>Not today</button>
+          </div>
+        </div>}
+
+        {/* 6. TIP at bottom */}
+        {tip&&<div className="tip-card"><div className="tip-t">{tip.tip}</div><div className="tip-x">{tip.text}</div><div className="tip-s">{"— "+tip.source}</div></div>}
       </>
     );
   };
 
-  // ══ CALENDAR ══
+  // ── CALENDAR ──
   const rCalendar=()=>{
     const year=calMonth.getFullYear(),month=calMonth.getMonth();
     const firstDayRaw=new Date(year,month,1).getDay();
     const firstDay=calStartMon?(firstDayRaw===0?6:firstDayRaw-1):firstDayRaw;
     const daysInMonth=new Date(year,month+1,0).getDate();
     const hdrs=calStartMon?WDAYS_MON:WDAYS;
+    const getMoodColor2=(iso)=>{const l=logs.find(x=>x.dt===iso);return l&&l.mood?getMoodColor(l.mood.e):null;};
     return(
       <>
         <div className="card">
@@ -1904,18 +1751,18 @@ export default function App(){
             {Array.from({length:daysInMonth}).map((_,i)=>{
               const day=i+1;
               const iso=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-              const log=getLogForDay(iso);
-              const evs=getEventsForDay(iso);
+              const evs=calEvents.filter(ev=>eventOccursOn(ev,iso));
               const finEvs=getFinEventsForDay(iso);
-              const tks=getTasksForDay(iso);
-              const ph=getCPhaseForDay(iso);
+              const tks=tasks.filter(t2=>t2.deadline===iso&&!t2.dn);
+              const ph=wantCycle&&cDay?getCPhase(((cDay+Math.floor((new Date(iso+"T12:00:00")-new Date())/86400000)-1+cLen*4)%cLen)+1):null;
               const isT=iso===todayISO(),isSel=iso===selDay;
-              const bg=log?getMoodColor(log.mood?log.mood.e:null):(ph&&wantCycle?ph.c+"22":"#F0F0F0");
-              const tc=log?"white":(ph&&wantCycle?ph.c:"#777");
+              const moodC=getMoodColor2(iso);
+              const bg=moodC||(ph&&wantCycle?ph.c+"22":"#F0F0F0");
+              const tc=moodC?"white":(ph&&wantCycle?ph.c:"#777");
               const dots=[];
               if(evs.length>0)dots.push(t.acc);
               if(tks.length>0)dots.push("#6BCB77");
-              if(evs.some(e=>e.cost)||finEvs.length>0)dots.push("#FFD93D");
+              if(finEvs.length>0)dots.push("#FFD93D");
               return(
                 <div key={day} className={"cal-d"+(isT?" tod":"")+(isSel?" sel":"")} style={{background:bg,color:tc,fontSize:10}} onClick={()=>setSelDay(iso)}>
                   {day}
@@ -1928,95 +1775,67 @@ export default function App(){
             {PHASES.map(p=><div key={p.id} style={{display:"flex",alignItems:"center",gap:3,fontSize:8,fontWeight:700,color:"#AAA"}}><div style={{width:7,height:7,borderRadius:2,background:p.c+"55"}}/>{p.l}</div>)}
           </div>}
         </div>
-
         <div className="card">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}>
             <div style={{fontFamily:"Fredoka One",fontSize:14,color:t.dark}}>{selDay===todayISO()?"Today":new Date(selDay+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>
             <button className="btn bp bsm" onClick={()=>setShowAddEv(true)}>+ Add</button>
           </div>
-          <DayPanel iso={selDay} compact={false}/>
+          <DayPanel iso={selDay} compact={false} calEvents={[...calEvents,...getFinEventsForDay(selDay)]} tasks={tasks} logs={logs} habitLog={habitLog} lps={lps} cLen={cLen} locs={locs} wantCycle={wantCycle} setDetailItem={setDetailItem} handleDeleteEv={handleDeleteEv} t={t}/>
         </div>
-
-        {wantCycle&&lps&&cPhase&&(()=>{
-          const ph=cPhase,allD=Array.from({length:cLen},(_,i)=>i+1);
-          return(
-            <div className="card">
-              <div style={{background:"linear-gradient(135deg,"+ph.c+","+ph.c+"99)",borderRadius:10,padding:12,textAlign:"center",marginBottom:10,color:"white"}}>
-                <div style={{fontSize:24}}>{ph.e}</div>
-                <div style={{fontFamily:"Fredoka One",fontSize:20}}>{"Day "+cDay}</div>
-                <div style={{fontSize:12,fontWeight:700,opacity:.9}}>{ph.l+" Phase · "+ph.energy}</div>
-                {dtp&&dtp<=7&&dtp>0&&<div style={{fontSize:10,fontWeight:700,marginTop:2}}>{"🌑 Period in ~"+dtp+" days"}</div>}
-              </div>
-              <div className="cycle-strip">{allD.map(d=>{const p2=getCPhase(d);const it=d===cDay;return<div key={d} className="cdd" style={{background:it?"white":p2.c+"99",border:it?"2.5px solid "+p2.c:"none",color:it?p2.c:"white",fontWeight:it?900:700,transform:it?"scale(1.25)":"none"}}>{d}</div>;})}</div>
-              <p style={{fontSize:10,fontWeight:600,color:"#444",lineHeight:1.4,marginBottom:7}}>{wantADHD?ph.adhd:ph.general}</p>
-              {ph.tips.map((tip2,i)=><div key={i} style={{display:"flex",gap:4,marginBottom:2,fontSize:10,fontWeight:600,color:"#444"}}><span>💜</span><span>{tip2}</span></div>)}
-            </div>
-          );
-        })()}
-
-        {showAddEv&&<AddEventModal onClose={()=>setShowAddEv(false)} onSave={ev=>setCalEvents(p=>[...p,ev])} locs={locs} initialDate={selDay} lc={lc} le={le} theme={theme}/>}
+        {wantCycle&&lps&&cPhase&&<div className="card">
+          <div style={{background:"linear-gradient(135deg,"+cPhase.c+","+cPhase.c+"99)",borderRadius:10,padding:12,textAlign:"center",marginBottom:10,color:"white"}}>
+            <div style={{fontSize:24}}>{cPhase.e}</div>
+            <div style={{fontFamily:"Fredoka One",fontSize:20}}>{"Day "+cDay}</div>
+            <div style={{fontSize:12,fontWeight:700,opacity:.9}}>{cPhase.l+" Phase · "+cPhase.energy}</div>
+          </div>
+          <div className="cycle-strip">{Array.from({length:cLen},(_,i)=>i+1).map(d=>{const p2=getCPhase(d);const it=d===cDay;return<div key={d} className="cdd" style={{background:it?"white":p2.c+"99",border:it?"2.5px solid "+p2.c:"none",color:it?p2.c:"white",fontWeight:it?900:700,transform:it?"scale(1.25)":"none"}}>{d}</div>;})}</div>
+          <p style={{fontSize:10,fontWeight:600,color:"#444",lineHeight:1.4,marginBottom:7}}>{wantADHD?cPhase.adhd:cPhase.general}</p>
+          {cPhase.tips.map((tip2,i)=><div key={i} style={{display:"flex",gap:4,marginBottom:2,fontSize:10,fontWeight:600,color:"#444"}}><span>💜</span><span>{tip2}</span></div>)}
+        </div>}
+        {showAddEv&&<AddEventModal onClose={()=>setShowAddEv(false)} onSave={ev=>setCalEvents(p=>[...p,ev])} locs={locs} initialDate={selDay} theme={theme}/>}
         {deleteModal&&<DeleteRecurModal ev={deleteModal.ev} date={deleteModal.date} onClose={()=>setDeleteModal(null)} onDelete={confirmDelete} theme={theme}/>}
       </>
     );
   };
 
-  // ══ TO-DO ══
+  // ── TO-DO ──
   const rTodo=()=>{
     const done=tasks.filter(t2=>t2.dn);
     const ov=tasks.filter(t2=>t2.ov&&!t2.dn);
     return(
       <>
-        {tasks.length===0&&<div className="card" style={{textAlign:"center",padding:"20px 13px"}}>
-          <div style={{fontSize:38,marginBottom:6}}>✅</div>
-          <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark,marginBottom:4}}>Your to-do list is empty</div>
-          <p style={{fontSize:11,fontWeight:600,color:"#AAA",marginBottom:0}}>Add tasks below — the app will suggest them at the right time based on your energy, location and how you feel about them.</p>
-        </div>}
-
         <div className="card">
           <div className="ct">➕ Add To-Do</div>
-          <Tip id="loc" text="📍 Tag where you will do this — the app only suggests it when you are in that location."/>
           <input className="ai" placeholder="What needs doing?" value={newT} onChange={e=>setNewT(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()} style={{marginBottom:6,display:"block",width:"100%"}}/>
-          <div className="fr">{locs.map(l=><button key={l} className={"fc"+(nLoc===l?" on":"")} onClick={()=>setNLoc(l)}>{le(l)+l}</button>)}</div>
+          <div className="fr">{locs.map(l=><button key={l} className={"fc"+(nLoc===l?" on":"")} onClick={()=>setNLoc(l)}>{le(l)}{l}</button>)}</div>
           <div style={{display:"flex",gap:4,marginBottom:5}}>
             {[["high","🔴 High"],["medium","🟡 Medium"],["low","🟢 Low"]].map(([v,l])=><button key={v} className={"fc"+(nPri===v?" on":"")} onClick={()=>setNPri(v)}>{l}</button>)}
           </div>
           <div style={{display:"flex",gap:3,marginBottom:6,flexWrap:"wrap"}}>
             {[5,10,15,30,45,60].map(m=><button key={m} className={"tc2"+(nMin===m?" on":"")} onClick={()=>setNMin(m)}>{m+"m"}</button>)}
           </div>
-          {wantADHD&&<>
-            <Tip id="av" text="😤 Be honest — if you dread a task the app picks the right energy moment to suggest it."/>
-            <div className="sl">How do you feel about this task?</div>
-            <div className="av" style={{marginBottom:7}}>{AVS.map(a=><button key={a.s} className="avb" style={nAv===a.s?{background:a.c,borderColor:a.c,color:"white"}:{}} onClick={()=>setNAv(a.s)}>{a.e}<span style={{fontSize:8}}>{a.l}</span></button>)}</div>
-          </>}
-          <div className="sl">Does this repeat?</div>
+          {wantADHD&&<div className="av" style={{marginBottom:7}}>{AVS.map(a=><button key={a.s} className="avb" style={nAv===a.s?{background:a.c,borderColor:a.c,color:"white"}:{}} onClick={()=>setNAv(a.s)}>{a.e}<span style={{fontSize:8}}>{a.l}</span></button>)}</div>}
           <div className="fr" style={{marginBottom:7}}>
             {[["none","One-off"],["daily","Daily"],["weekly","Weekly"],["fortnightly","Fortnightly"],["monthly","Monthly"]].map(([v,l])=>(
               <button key={v} className={"fc"+(nRecur===v?" on":"")} onClick={()=>setNRecur(v)}>{l}</button>
             ))}
           </div>
-          {nRecur!=="none"&&<div style={{background:"#F0F7FF",borderRadius:8,padding:"7px 9px",marginBottom:7,fontSize:10,fontWeight:600,color:"#4D96FF"}}>
-            🔁 Suggested once per {nRecur==="fortnightly"?"fortnight":nRecur} when your location and energy are right. Resets automatically each cycle.
-          </div>}
           {nRecur==="none"&&<div className="tog-row" style={{marginBottom:7}}>
-            <div><div className="tog-lbl">📅 Link to a deadline</div><div className="tog-sub">Appears in Calendar on that date</div></div>
+            <div><div className="tog-lbl">📅 Link to a deadline</div></div>
             <button className={"tog"+(nHasDead?" on":"")} onClick={()=>setNHasDead(s=>!s)}/>
           </div>}
           {nHasDead&&nRecur==="none"&&<div className="pf"><label>Deadline</label><input className="pi" type="date" value={nDeadline} onChange={e=>setNDeadline(e.target.value)} min={todayISO()}/></div>}
           <button className="btn bp" onClick={addTask}>Add Task</button>
         </div>
-
         <div className="fr">{["All",...locs].map(l=><button key={l} className={"fc"+(fLoc===l?" on":"")} onClick={()=>setFLoc(l)}>{l==="All"?"🗂️ All":le(l)+l}</button>)}</div>
-
         {ov.filter(t2=>fLoc==="All"||t2.lo===fLoc).length>0&&<>
           <div className="sl">⚠️ Overdue</div>
-          {ov.filter(t2=>fLoc==="All"||t2.lo===fLoc).map(t2=><div key={t2.id} style={{cursor:"pointer"}} onClick={()=>setDetailItem({item:t2,type:"task",iso:t2.deadline||todayISO()})}><TC t2={t2}/></div>)}
+          {ov.filter(t2=>fLoc==="All"||t2.lo===fLoc).map(t2=><TaskCard key={t2.id} t2={t2} onToggle={togT} onAv={setAv} onExpand={setExpandedTaskId} expandedId={expandedTaskId} onEdit={editTask} onDelete={(id)=>setTasks(ts=>ts.filter(x=>x.id!==id))} lc={lc} le={le} wantADHD={wantADHD} t={t}/>)}
         </>}
-
         <div className="sl">📋 Active</div>
         {getSorted(fLoc).filter(t2=>!t2.ov).length===0&&!ov.length
           ?<div className="empty"><div className="empty-i">🎉</div><p>Nothing here — add a task above or try the voice button!</p></div>
-          :getSorted(fLoc).filter(t2=>!t2.ov).map(t2=><div key={t2.id} style={{cursor:"pointer"}} onClick={()=>setDetailItem({item:t2,type:"task",iso:t2.deadline||todayISO()})}><TC t2={t2}/></div>)}
-
+          :getSorted(fLoc).filter(t2=>!t2.ov).map(t2=><TaskCard key={t2.id} t2={t2} onToggle={togT} onAv={setAv} onExpand={setExpandedTaskId} expandedId={expandedTaskId} onEdit={editTask} onDelete={(id)=>setTasks(ts=>ts.filter(x=>x.id!==id))} lc={lc} le={le} wantADHD={wantADHD} t={t}/>)}
         {done.length>0&&<>
           <div className="sl">{"✅ Done ("+done.length+")"}</div>
           {done.map(t2=><div key={t2.id} className="tc" style={{borderLeftColor:"#6BCB77",opacity:.55}}>
@@ -2028,18 +1847,133 @@ export default function App(){
     );
   };
 
-  // ══ RENDER ══
-  const TAB_LABELS={"🏠":"Home","📆":"Calendar","✅":"To-Do","⚙️":"Settings"};
+  // ── ADD ROUTINE STEP (inline helper) ──
+  const AddRoutineStep=({onAdd,isMorn})=>{
+    const[open,setOpen]=useState(false);
+    const[label,setLabel]=useState("");
+    const[mins,setMins]=useState(5);
+    if(!open)return<button className="btn bs bsm" style={{marginTop:5,fontSize:10}} onClick={()=>setOpen(true)}>+ Add step</button>;
+    return(
+      <div className="inline-edit" style={{marginTop:6}}>
+        <div style={{display:"flex",gap:5,marginBottom:5}}>
+          <input className="pi" style={{flex:1,fontSize:13}} placeholder="Step name..." value={label} onChange={e=>setLabel(e.target.value)} autoFocus onKeyDown={e=>e.key==="Enter"&&label.trim()&&(onAdd({id:(isMorn?"m":"e")+Date.now(),l:label.trim(),d:false,t:mins}),setLabel(""),setOpen(false))}/>
+          <input className="pi" style={{width:44,fontSize:12}} type="number" min="1" value={mins} onChange={e=>setMins(+e.target.value)}/>
+          <span style={{fontSize:9,color:"#AAA",fontWeight:600,alignSelf:"center",flexShrink:0}}>min</span>
+        </div>
+        <div style={{display:"flex",gap:5}}>
+          <button className="btn bp bsm" style={{flex:2}} onClick={()=>{if(!label.trim())return;onAdd({id:(isMorn?"m":"e")+Date.now(),l:label.trim(),d:false,t:mins});setLabel("");setOpen(false);}}>Add</button>
+          <button className="btn bs bsm" style={{flex:1}} onClick={()=>setOpen(false)}>Cancel</button>
+        </div>
+      </div>
+    );
+  };
 
+  // ── SPINNER MODAL ──
+  const SpinnerModal=()=>(
+    <>
+      <div className="voverlay" onClick={()=>setShowSpinner(false)}/>
+      <div className="vsheet">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
+          <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>🎯 Task Spinner</div>
+          <button className="db" onClick={()=>setShowSpinner(false)}>×</button>
+        </div>
+        {pending.length===0
+          ?<div className="empty"><div className="empty-i">🎉</div><p>No tasks to spin! Add some in the To-Do tab.</p></div>
+          :<div className="ww">
+            <div className="wc">
+              <div className="wp"/>
+              <canvas ref={cvRef} width={200} height={200} style={{borderRadius:"50%",display:"block"}}/>
+            </div>
+            <button className="sb" onClick={doSpin} disabled={spinning}>{spinning?"Spinning...":"Spin!"}</button>
+            {spRes&&<div className="sr">
+              <div style={{fontFamily:"Fredoka One",fontSize:20,color:t.acc,marginBottom:4}}>🎯 {spRes.tl}</div>
+              <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:9}}>{le(spRes.lo)+spRes.lo+" · "+spRes.mn+"min"}</div>
+              <div className="brow">
+                <button className="btn bp bsm" onClick={()=>setShowFocus(true)}>⏱ Start timer</button>
+                <button className="btn bm bsm" onClick={()=>{togT(spRes.id);setSpRes(null);}}>✓ Done!</button>
+                <button className="btn bs bsm" onClick={()=>setSpRes(null)}>Skip</button>
+              </div>
+            </div>}
+          </div>}
+      </div>
+    </>
+  );
+
+  // ── SPEND SHEET ──
+  const SpendSheet=()=>{
+    const ms=spends.filter(s=>{const d=new Date(s.dt),n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();});
+    const mSpent=ms.reduce((a,s)=>a+s.am,0);
+    const avail=Math.max(0,discretionary-mSpent);
+    return(
+      <>
+        <div className="voverlay" onClick={()=>setShowSpendSheet(false)}/>
+        <div className="vsheet">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
+            <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>💰 Spending</div>
+            <button className="db" onClick={()=>setShowSpendSheet(false)}>×</button>
+          </div>
+          <div style={{display:"flex",gap:9,marginBottom:11}}>
+            <div style={{flex:1,background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:10,padding:"9px 10px",color:"white"}}>
+              <div style={{fontSize:9,opacity:.8}}>Today</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:22}}>{"€"+todaySpent.toFixed(2)}</div>
+              <div style={{fontSize:9,opacity:.8}}>{"of €"+dailyBudget.toFixed(0)+"/day"}</div>
+            </div>
+            <div style={{flex:1,background:t.bg,borderRadius:10,padding:"9px 10px",border:"1.5px solid #EEE"}}>
+              <div style={{fontSize:9,color:"#AAA"}}>Available</div>
+              <div style={{fontFamily:"Fredoka One",fontSize:22,color:t.acc}}>{"€"+avail.toFixed(0)}</div>
+              <div style={{fontSize:9,color:"#AAA"}}>this month</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:5,marginBottom:6}}>
+            <input className="ai" type="number" placeholder="€" value={nSAm} onChange={e=>setNSAm(e.target.value)} style={{width:70,flex:"none"}}/>
+            <input className="ai" placeholder="What for?" value={nSLb} onChange={e=>setNSLb(e.target.value)}/>
+          </div>
+          <div className="fr" style={{marginBottom:7}}>{SCATS.map(c=><button key={c.id} className={"fc"+(nSCa===c.id?" on":"")} style={nSCa===c.id?{background:c.c,borderColor:c.c}:{}} onClick={()=>setNSCa(c.id)}>{c.e+" "+c.l}</button>)}</div>
+          <button className="btn bp" style={{width:"100%",marginBottom:11}} onClick={()=>{if(!nSAm||isNaN(nSAm))return;setSpends(ss=>[{id:"s"+Date.now(),am:+nSAm,ca:nSCa,lb:nSLb||(SCATS.find(c=>c.id===nSCa)||SCATS[SCATS.length-1]).l,dt:new Date().toISOString()},...ss]);setNSAm("");setNSLb("");}}>Log 💳</button>
+          <div className="sl">Today</div>
+          {todaySpends.length===0?<div style={{fontSize:10,color:"#CCC",fontWeight:600,padding:"4px 0"}}>Nothing logged yet today</div>
+          :todaySpends.map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",alignItems:"center",gap:7,padding:"6px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{fontSize:15,width:22}}>{cat.e}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:11}}>{s.lb}</div></div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cat.c}}>{"€"+s.am.toFixed(2)}</div><button className="db" onClick={()=>setSpends(ss=>ss.filter(x=>x.id!==s.id))}>×</button></div>;})}
+        </div>
+      </>
+    );
+  };
+
+  // ── CYCLE SHEET ──
+  const CycleSheet=()=>(
+    <>
+      <div className="voverlay" onClick={()=>setShowCycleSheet(false)}/>
+      <div className="vsheet">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
+          <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>🌙 Cycle</div>
+          <button className="db" onClick={()=>setShowCycleSheet(false)}>×</button>
+        </div>
+        {cPhase&&cDay&&<div style={{background:"linear-gradient(135deg,"+cPhase.c+","+cPhase.c+"99)",borderRadius:11,padding:12,color:"white",marginBottom:11,textAlign:"center"}}>
+          <div style={{fontSize:28}}>{cPhase.e}</div>
+          <div style={{fontFamily:"Fredoka One",fontSize:22}}>{"Day "+cDay+" — "+cPhase.l}</div>
+          <div style={{fontSize:11,fontWeight:700,opacity:.9}}>{"Energy: "+cPhase.energy}</div>
+        </div>}
+        <div className="pf"><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
+        <div className="pf"><label>Cycle length (days)</label><input className="pi" type="number" min="21" max="45" value={cLen} onChange={e=>setCLen(+e.target.value)}/></div>
+        {cPhase&&<>
+          <div className="sl">Phase tips</div>
+          {cPhase.tips.map((tip2,i)=><div key={i} style={{display:"flex",gap:5,padding:"4px 0",fontSize:11,fontWeight:600,color:"#444",borderBottom:"1px solid #F5F5F5"}}><span>💜</span><span>{tip2}</span></div>)}
+          {wantSpend&&cPhase.spend&&<div style={{background:cPhase.c+"12",borderRadius:8,padding:"7px 9px",marginTop:7,border:"1.5px solid "+cPhase.c+"33"}}>
+            <div style={{fontSize:10,fontWeight:800,color:cPhase.c,marginBottom:2}}>💰 Spending this phase</div>
+            <div style={{fontSize:10,fontWeight:600,color:"#444"}}>{cPhase.spend}</div>
+          </div>}
+        </>}
+      </div>
+    </>
+  );
+
+  // ── MAIN RENDER ──
   const renderTab=()=>{
     if(tab==="🏠")return rHome();
     if(tab==="📆")return rCalendar();
     if(tab==="✅")return rTodo();
     if(tab==="⚙️")return<SettingsPage
-      theme={theme} setTheme={setTheme}
-      profName={profName} setProfName={setProfName}
-      role={role} setRole={setRole}
-      locs={locs} setLocs={setLocs}
+      theme={theme} setTheme={setTheme} profName={profName} setProfName={setProfName}
+      role={role} setRole={setRole} locs={locs} setLocs={setLocs}
       wantCycle={wantCycle} setWantCycle={setWantCycle}
       wantSpend={wantSpend} setWantSpend={setWantSpend}
       wantADHD={wantADHD} setWantADHD={setWantADHD}
@@ -2050,12 +1984,12 @@ export default function App(){
       oneOffIncome={oneOffIncome} setOneOffIncome={setOneOffIncome}
       spends={spends} setSpends={setSpends}
       finSetup={finSetup} setFinSetup={setFinSetup}
-      lps={lps} setLps={setLps}
-      cLen={cLen} setCLen={setCLen}
+      lps={lps} setLps={setLps} cLen={cLen} setCLen={setCLen}
       cDay={cDay} cPhase={cPhase}
       rewards={rewards} setRewards={setRewards}
       mStreak={mStreak} eStreak={eStreak} mdStreak={mdStreak}
       tasks={tasks}
+      streakFreezes={streakFreezes} setStreakFreezes={setStreakFreezes}
       hasCommute={hasCommute} setHasCommute={setHasCommute}
       commuteMins={commuteMins} setCommuteMins={setCommuteMins}
       commuteEveMins={commuteEveMins} setCommuteEveMins={setCommuteEveMins}
@@ -2066,152 +2000,56 @@ export default function App(){
       tourDone={tourDone} tourSkipped={tourSkipped}
       setShowTour={setShowTour} setOnboarded={setOnboarded}
       newLoc2={newLoc2} setNewLoc2={setNewLoc2}
-      getRP={getRP} lc={lc} le={le}
-    />;
-    return null;
+      lc={lc} le={le}/>;
   };
 
   return(
     <>
-      <style>{makeCSS(t)}</style>
+      <style>{css}</style>
+      <link rel="preconnect" href="https://fonts.googleapis.com"/>
+      <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
       <div className="app">
-        <div className="hdr" style={{cursor:"pointer"}} onClick={()=>window.location.reload()}>
+        {/* Header */}
+        <div className="hdr" onClick={()=>setTab("🏠")}>
           <div className="hrow">
-            <div><div className="ht">BrainBloom 🧠</div><div className="hs">{greeting.text+" "+greeting.emoji}</div></div>
-            <div style={{display:"flex",alignItems:"center",gap:7}}>
-              <div className="dbg" style={{cursor:"pointer"}} onClick={e=>{e.stopPropagation();setTab("🏠");setSelDay(todayISO());}}>{todayStr}</div>
+            <div>
+              <div className="ht">🧠 BrainBloom</div>
+              <div className="hs">{todayStr+" · "+(profName||"Hey there!")}</div>
+            </div>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              {wantCycle&&cPhase&&<div className="dbg" onClick={e=>{e.stopPropagation();setShowCycleSheet(true);}}>{cPhase.e+" Day "+cDay}</div>}
+              {mStreak>0&&<div className="dbg">{"☀️"+mStreak}</div>}
             </div>
           </div>
-
         </div>
+        {/* Tabs */}
         <div className="tabs">
-          {["🏠","📆","✅","⚙️"].map(tb=>(
-            <button key={tb} className={"tab"+(tab===tb?" on":"")} onClick={()=>setTab(tb)}>
-              {tb}<div style={{fontSize:8,marginTop:1}}>{TAB_LABELS[tb]}</div>
-            </button>
-          ))}
+          {["🏠 Home","📆 Calendar","✅ To-Do","⚙️ Settings"].map(tb=>{
+            const k=tb.split(" ")[0];
+            return<button key={k} className={"tab"+(tab===k?" on":"")} onClick={()=>setTab(k)}>{tb}</button>;
+          })}
         </div>
+        {/* Main content */}
         <div className="pg">{renderTab()}</div>
-
-        {/* Draggable FAB */}
-        <button ref={fabRef} className="fab" style={{top:fabPos.y,left:fabPos.x,zIndex:fabOpen?202:200}} onClick={()=>setFabOpen(o=>!o)}>
+        {/* FAB */}
+        <button ref={fabRef} className="fab" style={{left:fabPos.x,top:fabPos.y}} onClick={()=>setFabOpen(o=>!o)}>
           {fabOpen?"✕":"✦"}
         </button>
-
-        {/* FAB menu */}
-        {fabOpen&&<div style={{position:"fixed",inset:0,zIndex:201,pointerEvents:"none"}}>
-          <div style={{position:"absolute",inset:0,pointerEvents:"all"}} onClick={()=>setFabOpen(false)}/>
-          <div className="fab-menu" style={{position:"absolute",top:Math.max(fabPos.y-130,10),left:Math.max(Math.min(fabPos.x-20,window.innerWidth-200),10),pointerEvents:"all",zIndex:202}}>
-            <button className="fab-opt" style={{background:"linear-gradient(135deg,#C77DFF,#7B2FBE)",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowVoice(true);}}>
-              🎙️ <span>Voice dump</span><span style={{fontSize:10,opacity:.8}}>Tell me anything</span>
-            </button>
-            <button className="fab-opt" style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",color:"white"}} onClick={(e)=>{e.stopPropagation();setFabOpen(false);setShowFocus(true);}}>
-              ⏱️ <span>Focus timer</span><span style={{fontSize:10,opacity:.8}}>Start a session</span>
-            </button>
+        {fabOpen&&<>
+          <div className="voverlay" style={{zIndex:201}} onClick={()=>setFabOpen(false)}/>
+          <div className="fab-menu" style={{left:Math.max(10,Math.min(fabPos.x-130,window.innerWidth-200)),top:Math.max(10,fabPos.y-175)}}>
+            <button className="fab-opt" style={{background:t.h1,color:"white"}} onClick={()=>{setFabOpen(false);setShowVoice(true);}}>🎙️ Voice Dump</button>
+            <button className="fab-opt" style={{background:t.h2,color:t.dark}} onClick={()=>{setFabOpen(false);setShowFocus(true);}}>⏱️ Focus Timer</button>
+            <button className="fab-opt" style={{background:t.h3,color:t.dark}} onClick={()=>{setFabOpen(false);setShowSpinner(true);}}>🎯 Task Spinner</button>
           </div>
-        </div>}
-
-        {/* Modals */}
+        </>}
+        {/* Sheets / Modals */}
         {showVoice&&<VoiceSheet onClose={()=>setShowVoice(false)} onResult={handleVoiceResult} locs={locs} profName={profName} role={role} theme={theme}/>}
-        {showFocus&&<FocusSheet onClose={()=>setShowFocus(false)} energy={energy} tasks={tasks} spotifyUrl={spotifyUrl} theme={theme}/>}
-        {showAddEv&&tab==="🏠"&&<AddEventModal onClose={()=>setShowAddEv(false)} onSave={ev=>setCalEvents(p=>[...p,ev])} locs={locs} initialDate={selDay} lc={lc} le={le} theme={theme}/>}
-        {deleteModal&&tab==="🏠"&&<DeleteRecurModal ev={deleteModal.ev} date={deleteModal.date} onClose={()=>setDeleteModal(null)} onDelete={confirmDelete} theme={theme}/>}
-        {showCheckinEdit&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowCheckinEdit(false);}}>
-          <div className="modal" style={{padding:20}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
-              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>{checkinEditStep===0?"Edit mood":checkinEditStep===1?"Edit energy":"Edit symptoms"}</div>
-              <button className="db" onClick={()=>setShowCheckinEdit(false)}>×</button>
-            </div>
-            {checkinEditStep===0&&<>
-              <div className="sl">How are you feeling?</div>
-              <div className="erow">{MOODS.map(m=><button key={m.e} className={"eb"+(mood&&mood.e===m.e?" on":"")} onClick={()=>setMood(m)}>{m.e}<span>{m.l}</span></button>)}</div>
-            </>}
-            {checkinEditStep===1&&<>
-              <div className="sl">Energy level?</div>
-              <div className="erow">{ENERGIES.map(e=><button key={e.e} className={"eb"+(energy&&energy.e===e.e?" on":"")} onClick={()=>setEnergy(e)}>{e.e}<span>{e.l}</span></button>)}</div>
-            </>}
-            {checkinEditStep===2&&<>
-              <div className="sl">Symptoms</div>
-              <div className="sg" style={{marginBottom:11}}>{SYMPTOMS.map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
-            </>}
-            {checkinEditStep!==2&&<div style={{display:"flex",gap:6,marginTop:9}}>
-              <button className="nb" style={{marginTop:0,flex:2}} onClick={()=>setShowCheckinEdit(false)}>Save ✓</button>
-              <button className="btn bs" style={{flex:1}} onClick={()=>setCheckinEditStep(s=>s===0?2:s-1)}>Other</button>
-            </div>}
-            {checkinEditStep===2&&<button className="nb" style={{marginTop:9}} onClick={()=>setShowCheckinEdit(false)}>Save ✓</button>}
-          </div>
-        </div>}
-
-        {showSpendSheet&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowSpendSheet(false);}}>
-          <div className="modal" style={{padding:20}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
-              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>💰 Log a Spend</div>
-              <button className="db" onClick={()=>setShowSpendSheet(false)}>×</button>
-            </div>
-            {finSetup&&<div style={{background:"linear-gradient(135deg,"+t.h1+","+t.h2+")",borderRadius:10,padding:"9px 12px",marginBottom:11,color:"white"}}>
-              <div style={{fontSize:9,fontWeight:700,opacity:.8}}>Daily budget</div>
-              <div style={{fontFamily:"Fredoka One",fontSize:20}}>{"€"+dailyBudget.toFixed(0)}</div>
-              <div style={{fontSize:9,opacity:.8}}>{"Spent today: €"+todaySpent.toFixed(2)}</div>
-            </div>}
-            <div style={{display:"flex",gap:6,marginBottom:8}}>
-              <input className="ai" type="number" placeholder="€ Amount" value={nSAm} onChange={e=>setNSAm(e.target.value)} style={{width:80,flex:"none"}}/>
-              <input className="ai" placeholder="What was it?" value={nSLb} onChange={e=>setNSLb(e.target.value)}/>
-            </div>
-            <div className="fr" style={{marginBottom:9}}>{SCATS.map(c=><button key={c.id} className={"fc"+(nSCa===c.id?" on":"")} style={nSCa===c.id?{background:c.c,borderColor:c.c}:{}} onClick={()=>setNSCa(c.id)}>{c.e+" "+c.l}</button>)}</div>
-            <button className="btn bp" style={{width:"100%"}} onClick={()=>{if(!nSAm||isNaN(nSAm))return;setSpends(ss=>[{id:"s"+Date.now(),am:+nSAm,ca:nSCa,lb:nSLb||(SCATS.find(c=>c.id===nSCa)||SCATS[SCATS.length-1]).l,dt:new Date().toISOString()},...ss]);setNSAm("");setNSLb("");setShowSpendSheet(false);}}>Log 💳</button>
-            {todaySpends.length>0&&<><div className="sl">Today's spends</div>{todaySpends.map(s=>{const cat=SCATS.find(c=>c.id===s.ca)||SCATS[SCATS.length-1];return<div key={s.id} style={{display:"flex",alignItems:"center",gap:7,padding:"5px 0",borderBottom:"1px solid #F5F5F5"}}><div style={{fontSize:15}}>{cat.e}</div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:10}}>{s.lb}</div></div><div style={{fontFamily:"Fredoka One",fontSize:12,color:cat.c}}>{"€"+s.am.toFixed(2)}</div><button className="db" style={{width:20,height:20,fontSize:10}} onClick={()=>setSpends(p=>p.filter(x=>x.id!==s.id))}>×</button></div>;})}
-            </>}
-          </div>
-        </div>}
-        {showCycleSheet&&<div className="modal-ov" onClick={e=>{if(e.target===e.currentTarget)setShowCycleSheet(false);}}>
-          <div className="modal" style={{padding:20}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
-              <div style={{fontFamily:"Fredoka One",fontSize:16,color:t.dark}}>🌙 Cycle</div>
-              <button className="db" onClick={()=>setShowCycleSheet(false)}>×</button>
-            </div>
-            {cPhase&&<div style={{background:cPhase.c+"18",borderRadius:10,padding:"9px 12px",marginBottom:11,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:22}}>{cPhase.e}</span>
-              <div><div style={{fontFamily:"Fredoka One",fontSize:14,color:cPhase.c}}>{cPhase.l+" Phase — Day "+cDay}</div><div style={{fontSize:10,fontWeight:600,color:"#555"}}>{cPhase.energy+" energy"}</div></div>
-            </div>}
-            <div className="pf"><label>Last period start</label><input className="pi" type="date" value={lps||""} onChange={e=>setLps(e.target.value)}/></div>
-            <div className="pf"><label>Cycle length (days)</label><input className="pi" type="number" min="21" max="45" value={cLen} onChange={e=>setCLen(+e.target.value)}/></div>
-            <div className="sl">Log today's symptoms</div>
-            <div className="sg" style={{marginBottom:11}}>{["Period started 🩸","Spotting","Cramps 😣","Back pain 💢","Headache 🤕","Bloating 🤰","Fatigue 😓","Mood swings 😤","Tender breasts","Nausea 🤢","Anxiety 😰","Brain fog 🌫️","Insomnia 😵"].map(s=><button key={s} className={"sc"+(syms.includes(s)?" on":"")} onClick={()=>setSyms(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])}>{s}</button>)}</div>
-            <button className="nb" style={{marginTop:0}} onClick={()=>setShowCycleSheet(false)}>Save ✓</button>
-          </div>
-        </div>}
-        {showTour&&<TourOverlay onDone={()=>{setShowTour(false);setTourDone(true);}} onSkip={()=>{setShowTour(false);setTourSkipped(true);}} theme={theme}/>}
-        {detailItem&&<DetailModal
-          item={detailItem.item}
-          type={detailItem.type}
-          onClose={()=>setDetailItem(null)}
-          onDelete={()=>{
-            const item=detailItem.item;
-            if(detailItem.type==="task")setTasks(ts=>ts.filter(t2=>t2.id!==item.id));
-            else if(item.finType==="income")setIncomes(p=>p.filter(x=>"inc_"+x.id!==item.id.split("_"+detailItem.iso)[0]&&"inc_"+x.id+"_"+detailItem.iso!==item.id));
-            else if(item.finType==="cost")setFixedCosts(p=>p.filter(x=>"cost_"+x.id+"_"+detailItem.iso!==item.id));
-            else if(item.finType==="income_once")setOneOffIncome(p=>p.filter(x=>"ooi_"+x.id!==item.id));
-            else handleDeleteEv(item,detailItem.iso);
-          }}
-          onEdit={(updated)=>{
-            const item=detailItem.item;
-            if(detailItem.type==="task"){
-              setTasks(ts=>ts.map(t2=>t2.id===updated.id?updated:t2));
-            } else if(item.finType==="income"){
-              const srcId=item.id.replace("inc_","").split("_")[0];
-              setIncomes(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,dayOfMonth:updated.dayOfMonth||x.dayOfMonth,dayOfWeek:updated.dayOfWeek||x.dayOfWeek,startDate:updated.startDate||x.startDate}:x));
-            } else if(item.finType==="cost"){
-              const srcId=item.id.replace("cost_","").split("_")[0];
-              setFixedCosts(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,dayOfMonth:updated.dayOfMonth||x.dayOfMonth,dayOfWeek:updated.dayOfWeek||x.dayOfWeek,startDate:updated.startDate||x.startDate}:x));
-            } else if(item.finType==="income_once"){
-              const srcId=item.id.replace("ooi_","").split("_")[0];
-              setOneOffIncome(p=>p.map(x=>x.id===srcId?{...x,label:updated.title,amount:updated.amount,date:updated.date}:x));
-            } else {
-              setCalEvents(evs=>[...evs.map(ev=>ev.id===updated.id?{...ev,...updated}:ev)]);
-            }
-          }}
-          locs={locs} lc={lc} le={le} theme={theme}
-        />}
+        {showFocus&&<FocusSheet onClose={()=>setShowFocus(false)} energy={energy} tasks={tasks} spotifyUrl={spotifyUrl} theme={theme} wantCycle={wantCycle} cPhase={cPhase} selectedTaskAv={spRes?(spRes.av||0):0}/>}
+        {showSpinner&&<SpinnerModal/>}
+        {showSpendSheet&&<SpendSheet/>}
+        {showCycleSheet&&<CycleSheet/>}
+        {(showTour)&&<TourOverlay onDone={()=>{setTourDone(true);setShowTour(false);}} onSkip={()=>{setTourSkipped(true);setShowTour(false);}} theme={theme}/>}
       </div>
     </>
   );
